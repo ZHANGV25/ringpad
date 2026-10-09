@@ -74,7 +74,7 @@ If the key never registers and the game runs as administrator, run Ringpad as ad
 
 ## Fixing problems
 
-**Teammates don't hear clips.** Check the "Out" meter moves when you press F7. If it does, the
+**Teammates don't hear clips.** Check the "Teammates hear" meter at the bottom of the window moves when you press F7. If it does, the
 game or Discord is using the wrong microphone, push-to-talk isn't held, or noise suppression is
 cutting the clip. If it doesn't, you have no clip yet: press F8 first.
 
