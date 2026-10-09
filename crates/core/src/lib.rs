@@ -14,6 +14,7 @@ mod engine_control;
 pub mod fifo;
 pub mod gate;
 pub mod history;
+pub mod keys;
 pub mod pads;
 pub mod player;
 

@@ -119,3 +119,19 @@ impl History {
         self.written.store(total, Ordering::Release);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn copy_window_wraps_across_ring_end() {
+        let history = History::new(4);
+        let ring_len = history.ring.len();
+        for offset in 0..4 {
+            history.write_sample_at(ring_len - 2 + offset, offset as f32 + 1.0);
+        }
+        history.publish_write(ring_len + 2);
+        assert_eq!(history.last(4), vec![1.0, 2.0, 3.0, 4.0]);
+    }
+}

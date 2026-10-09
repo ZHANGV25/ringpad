@@ -182,7 +182,7 @@ pub fn to_channels(mono: &[f32], channels: usize) -> Vec<f32> {
     }
     let mut out = Vec::with_capacity(mono.len() * channels);
     for &sample in mono {
-        out.extend(std::iter::repeat(sample).take(channels));
+        out.extend(std::iter::repeat_n(sample, channels));
     }
     out
 }

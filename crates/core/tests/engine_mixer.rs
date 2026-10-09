@@ -7,7 +7,7 @@ use common::{
     assert_all_approx, assert_approx, clip, engine_pair, feed_mic, feed_source, play_headphones,
     play_virtual, BLOCK, ENGINE_RATE,
 };
-use ringpad_core::engine::{Engine, EngineConfig, EngineHandle, SEND_VOLUME};
+use ringpad_core::engine::{Engine, EngineCommandError, EngineConfig, EngineHandle, SEND_VOLUME};
 
 // test_voice_device_is_recorded_and_forwarded_to_headphones
 #[test]
@@ -113,6 +113,78 @@ fn real_mic_is_mixed_into_virtual_mic() {
 fn no_headphone_player_when_monitoring_off() {
     let (mut engine, _handle) = engine_pair(true, false, false, false);
     assert_all_approx(&play_headphones(&mut engine, 1), 0.0, 1e-6);
+}
+
+#[test]
+fn virtual_mic_renders_clip_without_real_mic() {
+    let (mut engine, mut handle) = engine_pair(false, false, false, false);
+    handle
+        .play_send_clip(clip(&[0.7; BLOCK]))
+        .expect("play without mic");
+    assert_all_approx(&play_virtual(&mut engine, 1), 0.7, 1e-6);
+}
+
+#[test]
+fn forward_source_off_keeps_source_out_of_headphones() {
+    let (mut engine, _handle) = engine_pair(false, false, false, true);
+    feed_source(&mut engine, 0.6, 2);
+    assert_all_approx(&play_headphones(&mut engine, 1), 0.0, 1e-6);
+}
+
+#[test]
+fn stop_preview_silences_preview_player() {
+    let (mut engine, mut handle) = engine_pair(false, false, false, true);
+    handle
+        .play_preview_clip(clip(&[0.8; ENGINE_RATE as usize]))
+        .expect("preview");
+    assert_all_approx(&play_headphones(&mut engine, 1), 0.4, 1e-6);
+    handle.stop_preview().expect("stop preview");
+    assert_all_approx(&play_headphones(&mut engine, 1), 0.0, 1e-6);
+}
+
+#[test]
+fn stop_all_silences_send_and_preview_players() {
+    let (mut engine, mut handle) = engine_pair(false, false, false, true);
+    handle
+        .play_send_clip(clip(&[0.7; ENGINE_RATE as usize]))
+        .expect("send");
+    handle
+        .play_preview_clip(clip(&[0.8; ENGINE_RATE as usize]))
+        .expect("preview");
+    play_virtual(&mut engine, 1);
+    play_headphones(&mut engine, 1);
+    handle.stop_all().expect("stop all");
+    assert_all_approx(&play_virtual(&mut engine, 1), 0.0, 1e-6);
+    assert_all_approx(&play_headphones(&mut engine, 1), 0.0, 1e-6);
+}
+
+#[test]
+fn command_queue_reports_full_without_audio_drain() {
+    let (_engine, mut handle) = engine_pair(false, false, false, false);
+    let mut result = Ok(());
+    for _ in 0..128 {
+        result = handle.play_send_clip(clip(&[0.1]));
+        if result.is_err() {
+            break;
+        }
+    }
+    assert_eq!(result, Err(EngineCommandError::QueueFull));
+}
+
+#[test]
+fn retired_clip_overflow_path_is_nonblocking_until_garbage_collection() {
+    let (mut engine, mut handle) = engine_pair(false, false, false, false);
+    for index in 0..300 {
+        handle
+            .load_send_clip(clip(&[index as f32]))
+            .expect("load after drain");
+        play_virtual(&mut engine, 1);
+    }
+    handle.collect_garbage();
+    handle
+        .load_send_clip(clip(&[1.0]))
+        .expect("queue remains usable");
+    play_virtual(&mut engine, 1);
 }
 
 #[test]
