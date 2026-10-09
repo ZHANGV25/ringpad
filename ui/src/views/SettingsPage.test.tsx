@@ -40,7 +40,7 @@ describe('settings tabs', () => {
     openTab('Pads')
     expect(screen.getByText('Drop an audio file on a pad in the main window, or save a clip to it.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Back' }))
-    expect(screen.getByText('No clip yet')).toBeTruthy()
+    expect(screen.getByText('Something funny just happened?')).toBeTruthy()
   })
 })
 
@@ -112,7 +112,7 @@ describe('audio tab', () => {
     await waitFor(async () => expect((await settingsOf(api)).ducking).toBe(false))
 
     fireEvent.change(screen.getByRole('slider', { name: 'You hear' }), { target: { value: '0.3' } })
-    fireEvent.change(screen.getByRole('slider', { name: 'Others hear' }), { target: { value: '0.9' } })
+    fireEvent.change(screen.getByRole('slider', { name: 'Clip volume' }), { target: { value: '0.9' } })
     fireEvent.change(screen.getByRole('slider', { name: 'Keep the last' }), { target: { value: '60' } })
     fireEvent.change(screen.getByRole('slider', { name: 'Clip length' }), { target: { value: '8' } })
     await waitFor(async () =>
@@ -121,10 +121,10 @@ describe('audio tab', () => {
     expect(screen.getByText('60 s')).toBeTruthy()
   })
 
-  it('plays a test tone and shows it on the Out meter', async () => {
+  it('plays a test tone and shows it on the teammates meter', async () => {
     await openSettings()
     fireEvent.click(screen.getByRole('button', { name: 'Play test tone' }))
-    await waitFor(() => expect(screen.getByRole('meter', { name: 'Out' }).getAttribute('aria-valuenow')).toBe('92'))
+    await waitFor(() => expect(screen.getByRole('meter', { name: 'Teammates hear' }).getAttribute('aria-valuenow')).toBe('99'))
   })
 })
 

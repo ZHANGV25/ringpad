@@ -20,6 +20,15 @@
   --gap: 10px;
   --pad: 14px;
   --dur: 120ms;
+
+  /* Motion. Short and decelerating: things arrive fast and settle. Ease-in is never used for a
+     response to input, because it makes the first frames feel late. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --dur-press: 100ms;
+  --dur-release: 160ms;
+  --dur-fast: 150ms;
+  --dur-move: 240ms;
   --font: 'Inter', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
   --mono: 'Cascadia Mono', ui-monospace, Consolas, monospace;
 
@@ -61,5 +70,16 @@
 @media (prefers-reduced-motion: reduce) {
   :root {
     --dur: 0ms;
+    --dur-press: 0ms;
+    --dur-release: 0ms;
+    --dur-move: 0ms;
   }
+}
+
+/* Calm mode (lib/calm.ts): Ringpad is not the window in use, so nothing loops. Pausing holds each
+   animation where it is, so nothing jumps when it resumes. */
+:root[data-calm] *,
+:root[data-calm] *::before,
+:root[data-calm] *::after {
+  animation-play-state: paused !important;
 }

@@ -1,5 +1,5 @@
 import type { EngineApi, FileDropEvent, Unsubscribe } from './api'
-import { DEFAULT_PAD_HOTKEYS, DEFAULT_SETTINGS, DEFAULT_TALK, type AudioApp, type ClipInfo, type DeviceInfo, type EngineStatus, type Meters, type PadInfo, type Settings, type SettingsPatch, type Snapshot, type TalkState } from './types'
+import { DEFAULT_PAD_HOTKEYS, DEFAULT_SETTINGS, DEFAULT_TALK, type AudioApp, type ClipInfo, type DeviceInfo, type EngineStatus, type Meters, type PadInfo, type Playback, type Settings, type SettingsPatch, type Snapshot, type TalkState } from './types'
 import type { EventName, EventPayloads, Listener } from './fakeEvents'
 import { nextTalkState, talkEqual, validateTalkSettings } from './fakeTalk'
 import { cleanName, clamp, cloneClip, cloneDevices, clonePad, clonePads, cloneSettings, cloneTalk, makeApps, makeClip, makeDevices, makePad, makePeaks, requirePad, seededRandom, speechLevel, walk } from './fakeData'
@@ -29,7 +29,7 @@ export class FakeEngineApi implements EngineApi {
   private talk: TalkState = cloneTalk(DEFAULT_TALK)
   private clip: ClipInfo | null = null
   private pads: Array<PadInfo | null> = Array.from({ length: 8 }, () => null)
-  private playback = { sending: false, previewing: false, saveArmed: false }
+  private playback: Playback = { sending: false, previewing: false, saveArmed: false }
   private keyCapture = false
   private heldKeys = new Set<string>()
   private toggledMicOpen = false
@@ -124,12 +124,17 @@ export class FakeEngineApi implements EngineApi {
     }
     this.playback = { ...this.playback, previewing: true }
     this.emit('playback', { ...this.playback })
+    if (this.previewTimer !== null) window.clearTimeout(this.previewTimer)
+    this.previewTimer = window.setTimeout(() => {
+      this.playback = { ...this.playback, previewing: false }
+      this.emit('playback', { ...this.playback })
+    }, this.clip.seconds * 1000)
   }
   async sendClip(): Promise<void> {
     if (!this.clip) {
       throw new Error('No clip yet')
     }
-    this.startSending()
+    this.startSending(this.clip.seconds, null)
   }
 
   async stopAll(): Promise<void> {
@@ -160,7 +165,7 @@ export class FakeEngineApi implements EngineApi {
       throw new Error('Pad is empty')
     }
     this.lastPadPlayed = slot
-    this.startSending()
+    this.startSending(this.pads[slot]?.seconds ?? 1, slot)
   }
 
   async importPad({ slot, path }: { slot: number; path: string }): Promise<PadInfo> {
@@ -308,6 +313,16 @@ export class FakeEngineApi implements EngineApi {
     this.emit('status', status)
   }
 
+  simulateLive(peaks: number[]): void {
+    this.livePeaks = [...peaks]
+    this.emit('live', { peaks: [...peaks] })
+  }
+
+  simulateMeters(meters: Meters): void {
+    this.meters = { ...meters }
+    this.emit('meters', { ...meters })
+  }
+
   lastPad(): number | null {
     return this.lastPadPlayed
   }
@@ -346,16 +361,17 @@ export class FakeEngineApi implements EngineApi {
     this.emit('live', { peaks: [...this.livePeaks] })
   }
 
-  private startSending(): void {
-    this.playback = { sending: true, previewing: false, saveArmed: this.playback.saveArmed }
+  /** Plays for as long as the sound lasts, like the real engine. */
+  private startSending(seconds: number, pad: number | null): void {
+    this.playback = { sending: true, previewing: false, saveArmed: this.playback.saveArmed, pad }
     this.clipHolding = true
     if (this.sendingTimer !== null) window.clearTimeout(this.sendingTimer)
     this.sendingTimer = window.setTimeout(() => {
       this.sendingTimer = null
-      this.playback = { ...this.playback, sending: false }
+      this.playback = { ...this.playback, sending: false, pad: null }
       this.emit('playback', { ...this.playback })
       this.releaseClipAfterTail()
-    }, 650)
+    }, seconds * 1000)
     this.emit('playback', { ...this.playback })
     this.recomputeTalk()
   }

@@ -66,10 +66,11 @@ describe('fake engine', () => {
     vi.advanceTimersByTime(2000)
     expect(talk.mock.lastCall?.[0].holding).toEqual([])
 
-    await api.grabClip()
+    const clip = await api.grabClip()
     await api.sendClip()
     expect(talk.mock.lastCall?.[0].holding).toEqual(['v', 'b'])
-    vi.advanceTimersByTime(650)
+    // Held for as long as the clip plays, then for the tail.
+    vi.advanceTimersByTime(clip.seconds * 1000)
     expect(talk.mock.lastCall?.[0].holding).toEqual(['v', 'b'])
     vi.advanceTimersByTime(250)
     expect(talk.mock.lastCall?.[0].holding).toEqual([])

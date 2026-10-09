@@ -1,10 +1,13 @@
-import { useState } from 'react'
-import type { ClipInfo, PadInfo, Playback, Settings } from '../../engine/types'
+import { useId, useLayoutEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
+import type { ClipInfo, Meters, PadInfo, Playback, Settings } from '../../engine/types'
 import { KeyChip, Sheet } from '../../components/controls'
 import { PlayIcon, PlusIcon, SendIcon, StopIcon } from '../../components/icons'
-import { WaveformCanvas } from '../../components/WaveformCanvas'
+import { Waveform } from '../../components/Waveform'
 import { Panda } from '../../components/panda/Panda'
-import { useEngine } from '../../state/EngineProvider'
+import { flyWaveform, landHere } from '../../lib/flight'
+import { useEngine, useSignals } from '../../state/EngineProvider'
+import { usePlayhead } from './usePlayhead'
 import { useClipPanda } from './useClipPanda'
 
 interface ClipCardProps {
@@ -13,25 +16,30 @@ interface ClipCardProps {
   playback: Playback
 }
 
+/**
+ * The current clip, with the panda presenting it. A new clip visibly lifts out of the tape above
+ * and lands here; while it plays, a playhead sweeps across it.
+ */
 export function ClipCard({ settings, clip, playback }: ClipCardProps) {
   const { api } = useEngine()
   const [saving, setSaving] = useState(false)
+  const onAir = playback.sending && playback.pad == null
   return (
-    <section className={`card clip-card ${playback.sending ? 'sending' : ''}`} aria-label="Current clip">
+    <section className={`card clip-card ${onAir ? 'on-air' : ''}`} aria-label="Current clip">
       <div className="clip-stage">
         <ClipPanda />
         {clip ? (
-          <WaveformCanvas peaks={clip.peaks} className="clip-wave" label="Current clip waveform" />
+          <ClipWave clip={clip} playing={(onAir || playback.previewing) && clip !== null} />
         ) : (
           <div className="clip-empty">
-            <span className="clip-empty-title">No clip yet</span>
+            <span className="clip-empty-title">Something funny just happened?</span>
             <span className="muted">
-              Press <KeyChip name={settings.hotkeys.grab} /> to clip the last {settings.grabSeconds} s
+              Press <KeyChip name={settings.hotkeys.grab} /> to keep the last {settings.grabSeconds} s
             </span>
           </div>
         )}
       </div>
-      {clip ? <ClipControls clip={clip} playback={playback} onSave={() => setSaving(true)} /> : null}
+      {clip ? <ClipActions playback={playback} onAir={onAir} onSave={() => setSaving(true)} /> : null}
       {clip && playback.saveArmed ? (
         <div className="save-armed" role="status">
           <span>Press a pad key to save this clip</span>
@@ -45,38 +53,99 @@ export function ClipCard({ settings, clip, playback }: ClipCardProps) {
   )
 }
 
-interface ClipControlsProps {
+interface ClipWaveProps {
   clip: ClipInfo
-  playback: Playback
-  onSave: () => void
+  playing: boolean
 }
 
-function ClipControls({ clip, playback, onSave }: ClipControlsProps) {
-  const { api } = useEngine()
+function ClipWave({ clip, playing }: ClipWaveProps) {
+  const wrap = useRef<HTMLDivElement>(null)
+  const head = useRef<HTMLSpanElement>(null)
+  const seen = useRef<string | null>(null)
+
+  // A new clip flies in from the tape's clip band. The first one shown on opening does not.
+  useLayoutEffect(() => {
+    const first = seen.current === null
+    seen.current = clip.id
+    const target = wrap.current
+    const band = document.querySelector('.tape-band')
+    if (first || !target || !band) return
+    landHere(target, flyWaveform(clip.peaks, band.getBoundingClientRect(), target.getBoundingClientRect()))
+  }, [clip.id, clip.peaks])
+
+  usePlayhead(head, playing, clip.seconds)
+
   return (
-    <div className="clip-row">
-      <div className="clip-length">
-        <strong>{clip.seconds.toFixed(1)} s</strong>
-        <span className="muted small">{playback.sending ? 'Sending' : playback.previewing ? 'Previewing' : 'Current clip'}</span>
+    <div className="clip-body">
+      <div ref={wrap} className="clip-wave-wrap">
+        <Waveform peaks={clip.peaks} className="clip-wave" label="Current clip waveform" />
+        <span ref={head} className="playhead" aria-hidden="true" />
       </div>
-      <button type="button" className="button small ghost" onClick={() => void api.previewClip()}>
-        <PlayIcon /> Preview
-      </button>
-      <button type="button" className="button small primary" onClick={() => void (playback.sending ? api.stopAll() : api.sendClip())}>
-        {playback.sending ? <StopIcon /> : <SendIcon />}
-        {playback.sending ? 'Stop' : 'Send'}
-      </button>
-      <button type="button" className="button small" onClick={onSave}>
-        <PlusIcon /> Save
-      </button>
+      <span className="clip-length numeric">{clip.seconds.toFixed(1)} s</span>
     </div>
   )
 }
 
-/** Lives in its own component so meter updates re-render only the panda. */
+interface ClipActionsProps {
+  playback: Playback
+  onAir: boolean
+  onSave: () => void
+}
+
+/** Who hears what is said on each button: preview is only you, send is everyone. */
+function ClipActions({ playback, onAir, onSave }: ClipActionsProps) {
+  const { api } = useEngine()
+  return (
+    <div className="clip-actions">
+      <ClipAction
+        label={playback.previewing ? 'Stop' : 'Preview'}
+        icon={playback.previewing ? <StopIcon /> : <PlayIcon />}
+        note="only you"
+        tone="ghost"
+        onPress={() => void (playback.previewing ? api.stopAll() : api.previewClip())}
+      />
+      <ClipAction
+        label={onAir ? 'Stop' : 'Send'}
+        icon={onAir ? <StopIcon /> : <SendIcon />}
+        note={onAir ? 'on air' : 'everyone'}
+        tone="primary"
+        onPress={() => void (onAir ? api.stopAll() : api.sendClip())}
+      />
+      <ClipAction label="Save" icon={<PlusIcon />} note="to a pad" tone="" onPress={onSave} />
+    </div>
+  )
+}
+
+interface ClipActionProps {
+  label: string
+  icon: ReactNode
+  note: string
+  tone: 'ghost' | 'primary' | ''
+  onPress: () => void
+}
+
+/** A button named by what it does, with who hears it read out as its description. */
+function ClipAction({ label, icon, note, tone, onPress }: ClipActionProps) {
+  const noteId = useId()
+  return (
+    <button type="button" className="clip-action" aria-label={label} aria-describedby={noteId} onClick={onPress}>
+      <span className={tone ? `button ${tone}` : 'button'} aria-hidden="true">
+        {icon} {label}
+      </span>
+      <span id={noteId} className="clip-action-note">
+        {note}
+      </span>
+    </button>
+  )
+}
+
+const readOut = (meters: Meters) => meters.outgoing
+
+/** Lives in its own component so the panda's mood changes re-render only the panda. */
 function ClipPanda() {
-  const { mood, level, cue } = useClipPanda()
-  return <Panda mood={mood} level={level} cue={cue} size={52} className="clip-panda" />
+  const { mood, cue } = useClipPanda()
+  const { meters } = useSignals()
+  return <Panda mood={mood} level={() => readOut(meters.get())} cue={cue} size={64} className="clip-panda" />
 }
 
 interface SaveSheetProps {

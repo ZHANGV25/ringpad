@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fitPeaks, markerStart, waveformBars } from './draw'
+import { fillBars, fitPeaks, waveformBars } from './draw'
 
 describe('fitPeaks', () => {
   it('keeps the loudest value of each bucket when shrinking', () => {
@@ -34,14 +34,22 @@ describe('waveformBars', () => {
   })
 })
 
-describe('markerStart', () => {
-  it('marks the newest share of the strip', () => {
-    expect(markerStart(300, 5, 30)).toBeCloseTo(250)
-    expect(markerStart(300, 60, 30)).toBe(0)
+describe('fillBars', () => {
+  it('fills all bars as one path in one colour', () => {
+    const calls: string[] = []
+    const context = {
+      beginPath: () => calls.push('begin'),
+      rect: (x: number) => calls.push(`rect ${x}`),
+      fill: () => calls.push('fill'),
+      fillStyle: '',
+    } as unknown as CanvasRenderingContext2D
+    fillBars(context, waveformBars([0.5, 1], 4, 10, 1), '#123')
+    expect(calls).toEqual(['begin', 'rect 0', 'rect 2', 'fill'])
+    expect(context.fillStyle).toBe('#123')
   })
 
-  it('has no marker without both lengths', () => {
-    expect(markerStart(300)).toBeNull()
-    expect(markerStart(300, 5)).toBeNull()
+  it('draws nothing for no bars', () => {
+    const context = { beginPath: () => { throw new Error('drew') } } as unknown as CanvasRenderingContext2D
+    expect(() => fillBars(context, [], '#000')).not.toThrow()
   })
 })

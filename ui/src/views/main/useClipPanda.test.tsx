@@ -19,7 +19,7 @@ function pad(overrides: Partial<PadInfo> = {}): PadInfo {
 }
 
 function clipPanda(): string | undefined {
-  return document.querySelector<SVGSVGElement>('svg.clip-panda')?.dataset.mood
+  return document.querySelector<HTMLElement>('.clip-panda')?.dataset.mood
 }
 
 describe('pickMood', () => {

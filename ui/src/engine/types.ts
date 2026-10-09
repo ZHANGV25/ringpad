@@ -94,6 +94,8 @@ export interface Playback {
   sending: boolean
   previewing: boolean
   saveArmed: boolean
+  /** The pad being sent, when what is playing is a pad rather than the clip. */
+  pad?: number | null
 }
 
 export interface TalkState {

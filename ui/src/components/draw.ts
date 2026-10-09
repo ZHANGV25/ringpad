@@ -37,49 +37,11 @@ export function waveformBars(peaks: number[], width: number, height: number, dpr
   })
 }
 
-/** Device-pixel x where the "what a clip takes" band starts, or null without a band. */
-export function markerStart(canvasWidth: number, markerSeconds?: number, historySeconds?: number): number | null {
-  if (!markerSeconds || !historySeconds) return null
-  const share = Math.min(1, markerSeconds / historySeconds)
-  return canvasWidth * (1 - share)
-}
-
-/**
- * Draws peaks as thin bars in the canvas's text colour. With a marker, bars older than
- * the clip length are drawn muted over a plain background and the newest ones at full
- * contrast over a faint band, so the strip shows what a grab would take.
- */
-export function drawWaveform(
-  canvas: HTMLCanvasElement,
-  peaks: number[],
-  options: { markerSeconds?: number; historySeconds?: number } = {},
-): void {
-  const rect = canvas.getBoundingClientRect()
-  const dpr = window.devicePixelRatio || 1
-  const width = Math.max(1, Math.floor(rect.width))
-  const height = Math.max(1, Math.floor(rect.height))
-  canvas.width = Math.floor(width * dpr)
-  canvas.height = Math.floor(height * dpr)
-  let context: CanvasRenderingContext2D | null = null
-  try {
-    context = canvas.getContext('2d')
-  } catch {
-    context = null
-  }
-  if (!context) {
-    return
-  }
-  const styles = getComputedStyle(canvas)
-  const strong = styles.color || '#0b0b0b'
-  const muted = styles.getPropertyValue('--text-muted').trim() || strong
-  const band = markerStart(canvas.width, options.markerSeconds, options.historySeconds)
-  context.clearRect(0, 0, canvas.width, canvas.height)
-  if (band !== null) {
-    context.fillStyle = styles.getPropertyValue('--surface').trim() || 'transparent'
-    context.fillRect(band, 0, canvas.width - band, canvas.height)
-  }
-  waveformBars(peaks, width, height, dpr).forEach((bar) => {
-    context.fillStyle = band === null || bar.x >= band ? strong : muted
-    context.fillRect(bar.x, bar.y, bar.width, bar.height)
-  })
+/** Fills every bar as one path: one draw call per colour instead of one per bar. */
+export function fillBars(context: CanvasRenderingContext2D, bars: BarRect[], color: string): void {
+  if (bars.length === 0) return
+  context.beginPath()
+  for (const bar of bars) context.rect(bar.x, bar.y, bar.width, bar.height)
+  context.fillStyle = color
+  context.fill()
 }

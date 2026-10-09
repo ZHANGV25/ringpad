@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import type { DeviceInfo, Settings } from '../engine/types'
-import { Meter } from '../components/Meter'
+import type { DeviceInfo, Meters, Settings } from '../engine/types'
+import { LevelMeter } from '../components/LevelMeter'
 import { BackIcon, CheckIcon } from '../components/icons'
 import { Panda } from '../components/panda/Panda'
 import type { PandaMood } from '../components/panda/Panda'
 import { reducedMotion } from '../components/panda/motion'
-import { useEngine, useMeters } from '../state/EngineProvider'
+import { useEngine, useMeterSelector, useSignals } from '../state/EngineProvider'
 import { SourcePicker, VirtualMicPicker } from './SettingsAudio'
 import { HotkeyRow } from './SettingsHotkeys'
 
@@ -95,16 +95,17 @@ function CableStep({ settings }: { settings: Settings }) {
   )
 }
 
+const readOut = (meters: Meters) => meters.outgoing
+
 function TestStep() {
   const { api } = useEngine()
-  const meters = useMeters()
   return (
     <>
       <div className="tone-test">
         <button type="button" className="button primary" onClick={() => void api.playTestTone()}>
           Play test tone
         </button>
-        <Meter label="Out" value={meters.outgoing} />
+        <LevelMeter label="Teammates hear" read={readOut} />
       </div>
     </>
   )
@@ -137,12 +138,13 @@ interface SetupGuideProps {
 
 /** The panda and its speech bubble. Its own component so meter updates re-render only this. */
 function SetupGuide({ step, settings, cableFound, finishing }: SetupGuideProps) {
-  const meters = useMeters()
+  const { meters } = useSignals()
+  const toneOn = useMeterSelector((levels) => levels.outgoing > TALK_LEVEL)
   const intro = stepIntro(step, settings)
-  const mood = setupMood(step, { cableFound, finishing, toneOn: meters.outgoing > TALK_LEVEL })
+  const mood = setupMood(step, { cableFound, finishing, toneOn })
   return (
     <div className="setup-guide">
-      <Panda mood={mood} level={meters.outgoing} size={80} />
+      <Panda mood={mood} level={() => readOut(meters.get())} size={80} />
       <div className="bubble" key={step}>
         <h1>{intro.title}</h1>
         <p>{intro.body}</p>

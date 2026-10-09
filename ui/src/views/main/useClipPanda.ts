@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PandaCue, PandaMood } from '../../components/panda/Panda'
 import type { EngineStatus, PadInfo } from '../../engine/types'
-import { useEngine, useMeters } from '../../state/EngineProvider'
+import { useEngine, useMeterSelector } from '../../state/EngineProvider'
 
 /** Source level above which the panda hears something. */
 const HEAR_LEVEL = 0.06
@@ -15,15 +15,14 @@ export const CELEBRATE_MS = 2200
 
 export interface ClipPanda {
   mood: PandaMood
-  level: number
   cue: PandaCue | null
 }
 
 /** What the panda in the clip card is doing, from the engine's state. */
 export function useClipPanda(): ClipPanda {
   const { state } = useEngine()
-  const meters = useMeters()
-  const hearing = useHeld(meters.source > HEAR_LEVEL, HEAR_HOLD_MS)
+  const loud = useMeterSelector((meters) => meters.source > HEAR_LEVEL)
+  const hearing = useHeld(loud, HEAR_HOLD_MS)
   const { moment, cue } = useMoments()
   const busy = hearing || state.playback.sending || state.playback.previewing
   const dozing = useDozing(busy)
@@ -36,7 +35,7 @@ export function useClipPanda(): ClipPanda {
     hearing,
     dozing,
   })
-  return { mood, level: meters.outgoing, cue }
+  return { mood, cue }
 }
 
 interface MoodInputs {

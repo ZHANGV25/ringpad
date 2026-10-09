@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { AudioApp, Settings, SettingsPatch } from '../engine/types'
+import type { AudioApp, Meters, Settings, SettingsPatch } from '../engine/types'
 import { IconButton, Slider, Toggle } from '../components/controls'
 import { ExternalLinkIcon, RefreshIcon } from '../components/icons'
-import { Meter } from '../components/Meter'
-import { useEngine, useMeters } from '../state/EngineProvider'
+import { LevelMeter } from '../components/LevelMeter'
+import { useEngine } from '../state/EngineProvider'
 
 const VB_CABLE_URL = 'https://vb-audio.com/Cable/'
 
@@ -13,7 +13,6 @@ interface TabProps {
 
 export function AudioTab({ settings }: TabProps) {
   const { api, state } = useEngine()
-  const meters = useMeters()
   const update = (patch: SettingsPatch) => void api.updateSettings({ patch })
   const outputs = state.devices.filter((device) => device.direction === 'output' && !device.virtualCable)
   const inputs = state.devices.filter((device) => device.direction === 'input' && !device.virtualCable)
@@ -63,7 +62,7 @@ export function AudioTab({ settings }: TabProps) {
       </section>
       <section className="group">
         <span className="label">Levels and length</span>
-        <Slider label="Others hear" value={settings.sendVolume} min={0} max={1} step={0.01} percent onChange={(sendVolume) => update({ sendVolume })} />
+        <Slider label="Clip volume" value={settings.sendVolume} min={0} max={1} step={0.01} percent onChange={(sendVolume) => update({ sendVolume })} />
         <Slider label="Keep the last" value={settings.historySeconds} min={10} max={120} step={5} suffix=" s" onChange={(historySeconds) => update({ historySeconds })} />
         <Slider label="Clip length" value={settings.grabSeconds} min={1} max={30} step={1} suffix=" s" onChange={(grabSeconds) => update({ grabSeconds })} />
       </section>
@@ -74,7 +73,7 @@ export function AudioTab({ settings }: TabProps) {
             Play test tone
           </button>
         </div>
-        <Meter label="Out" value={meters.outgoing} />
+        <MeterRow />
       </section>
     </>
   )
@@ -196,4 +195,22 @@ export function valueToSource(value: string, apps: AudioApp[]): Settings['source
 
 function sortApps(apps: AudioApp[]): AudioApp[] {
   return [...apps].sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name))
+}
+
+const readSource = (meters: Meters) => meters.source
+const readMic = (meters: Meters) => meters.mic
+const readOut = (meters: Meters) => meters.outgoing
+
+/** Every level in one place, for checking each step of the route. */
+function MeterRow() {
+  return (
+    <div className="meter-rows">
+      <span className="small muted">Recording</span>
+      <LevelMeter label="Recording" read={readSource} />
+      <span className="small muted">Your mic</span>
+      <LevelMeter label="Your mic" read={readMic} />
+      <span className="small muted">Teammates hear</span>
+      <LevelMeter label="Teammates hear" read={readOut} />
+    </div>
+  )
 }

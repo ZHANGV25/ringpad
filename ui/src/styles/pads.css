@@ -1,121 +1,187 @@
-/* Pads: a 2 x 4 grid that takes the space left in the window. */
-.pads-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-auto-rows: minmax(0, 1fr);
+/*
+ * Pads: eight keycaps in two rows of four, like a sampler. A cap has depth (a thicker bottom edge)
+ * and presses down when it plays; the fill sweeping across it shows how far the sound has got.
+ * They take the height the window has spare, up to a comfortable size; in a short window they
+ * become one-line keys (see the end of this file).
+ */
+.pads {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
   min-height: 0;
 }
 
-.pad-tile {
-  position: relative;
+.pads-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pad-grid {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 8px;
   min-height: 0;
-  border: var(--hairline) solid var(--line);
+  max-height: 236px;
+}
+
+.pad-key {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+.pad-cap {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  padding: 6px 7px 7px;
+  overflow: hidden;
+  border: var(--hairline) solid var(--line-strong);
   border-radius: var(--radius);
   background: var(--bg);
-  transition: background var(--dur), border-color var(--dur), color var(--dur);
+  box-shadow: inset 0 -2px 0 var(--line-strong);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform var(--dur-release) var(--ease-out),
+    box-shadow var(--dur-release) var(--ease-out),
+    background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
 }
 
-.pad-tile.empty-pad {
-  border-style: dashed;
-  border-color: var(--line-strong);
-}
-
-.pad-tile.filled:hover {
-  border-color: var(--line-strong);
+.pad-cap:hover {
   background: var(--surface);
 }
 
-.pad-tile.active,
-.pad-tile.drop-target {
-  border-color: var(--fill);
+/* Pressed: the cap sinks onto its edge. */
+.pad-cap:active {
+  box-shadow: inset 0 0 0 var(--line-strong);
+  transform: translateY(2px);
+  transition-duration: var(--dur-press);
+}
+
+.pad-key.empty .pad-cap {
+  border-style: dashed;
+  box-shadow: none;
+  color: var(--text-faint);
+  cursor: default;
+}
+
+.pad-key.empty .pad-cap:hover {
+  background: transparent;
+}
+
+.pad-key.empty .pad-cap:active {
+  transform: none;
+}
+
+/* With a clip waiting, an empty pad invites it in. */
+.pad-key.empty.open .pad-cap {
+  border-color: var(--text-muted);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.pad-key.empty.open .pad-cap:hover {
   border-style: solid;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.pad-key.drop-target .pad-cap {
+  border-style: solid;
+  border-color: var(--fill);
   background: var(--fill);
   color: var(--on-fill);
 }
 
-.pad-play {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 4px;
-  width: 100%;
-  height: 100%;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: inherit;
-  background: transparent;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.empty-pad .pad-play {
-  cursor: default;
-}
-
-.pad-top,
-.pad-bottom {
+.pad-top {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
   min-width: 0;
+}
+
+.pad-slot {
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.pad-face {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+}
+
+.pad-face > svg {
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
+}
+
+.pad-wave {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: 26px;
 }
 
 .pad-name {
-  flex: 1;
+  position: relative;
   min-width: 0;
   overflow: hidden;
+  font-size: 11.5px;
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.empty-pad .pad-name {
-  color: var(--text-faint);
+.pad-key.empty .pad-name {
   font-weight: 400;
 }
 
-.pad-wave {
-  display: block;
-  flex: 1;
-  min-width: 0;
-  height: 16px;
-  color: currentColor;
+/* How far the sound has played: a tint sliding in from the left (usePlayhead). */
+.pad-fill {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--text) 16%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-100%);
 }
 
-.pad-length {
-  flex: none;
-  padding-right: 22px;
-  color: var(--text-muted);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
+.pad-fill.playing-still {
+  opacity: 1;
+  transform: none;
 }
 
-.pad-tile.active .pad-length,
-.pad-tile.active .key-chip,
-.pad-tile.drop-target .pad-name,
-.pad-tile.drop-target .key-chip {
-  border-color: var(--on-fill);
-  color: var(--on-fill);
+.pad-key.playing .pad-cap {
+  border-color: var(--text);
 }
 
 .pad-more {
   position: absolute;
-  right: 4px;
-  bottom: 4px;
-  width: 24px;
-  height: 24px;
-  opacity: 0.55;
+  top: 3px;
+  right: 3px;
+  width: 22px;
+  height: 22px;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
 
-.pad-tile:hover .pad-more,
+.pad-key:hover .pad-more,
 .pad-more:focus-visible {
   opacity: 1;
-}
-
-.pad-tile.active .pad-more {
-  color: var(--on-fill);
 }
 
 .pad-more svg {
@@ -159,4 +225,48 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* A short window: one-line keys, the hotkey and the name side by side. */
+@media (max-height: 599px) {
+  .pad-cap {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: none;
+    align-items: center;
+    gap: 6px;
+    padding: 0 7px;
+  }
+
+  .pad-face {
+    display: none;
+  }
+
+  /* An empty key shows a plus where a full one shows its name. */
+  .pad-key.empty .pad-face {
+    display: grid;
+    justify-items: start;
+  }
+
+  .pad-key.empty .pad-name {
+    display: none;
+  }
+
+  .pad-key.drop-target .pad-name {
+    display: block;
+  }
+
+  .pad-key.drop-target .pad-face {
+    display: none;
+  }
+
+  /* No room for the options button beside the name: right-click opens them (or Tab to it). */
+  .pad-key:hover .pad-more:not(:focus-visible) {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .pad-more {
+    top: 50%;
+    margin-top: -11px;
+  }
 }

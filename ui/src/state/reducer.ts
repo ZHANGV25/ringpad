@@ -27,7 +27,6 @@ export interface EngineState {
   playback: Playback
   talk: TalkState
   virtualCaptureHint: string | null
-  livePeaks: number[]
   notice: Notice | null
 }
 
@@ -40,7 +39,6 @@ export type EngineAction =
   | { type: 'pads'; pads: Array<PadInfo | null> }
   | { type: 'playback'; playback: Playback }
   | { type: 'talk'; talk: TalkState }
-  | { type: 'live'; peaks: number[] }
   | { type: 'error'; message: string; id: number }
   | { type: 'clearError'; id: number }
 
@@ -56,7 +54,6 @@ export const initialEngineState: EngineState = {
   playback: { sending: false, previewing: false, saveArmed: false },
   talk: DEFAULT_TALK,
   virtualCaptureHint: null,
-  livePeaks: [],
   notice: null,
 }
 
@@ -91,8 +88,6 @@ export function engineReducer(state: EngineState, action: EngineAction): EngineS
       return { ...state, playback: action.playback }
     case 'talk':
       return { ...state, talk: action.talk }
-    case 'live':
-      return { ...state, livePeaks: action.peaks }
     case 'error':
       return { ...state, notice: { id: action.id, message: action.message } }
     case 'clearError':

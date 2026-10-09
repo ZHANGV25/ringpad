@@ -1,8 +1,12 @@
-/* Main window: top bar, live strip, current clip, pads, footer. Fits 380 x 680 without scrolling. */
+/*
+ * Main window, top to bottom in the order things happen: the tape (what Ringpad hears), the clip
+ * (what you kept), the pads (what you saved), and what teammates hear. Fits 380 x 680 without
+ * scrolling. Everything that moves here moves by transform or opacity only.
+ */
 .main-shell {
   display: grid;
   grid-template-rows: auto auto auto minmax(0, 1fr) auto;
-  gap: var(--gap);
+  gap: 12px;
   height: 100%;
   padding: 10px var(--pad) 12px;
   overflow: hidden;
@@ -32,7 +36,7 @@
   display: flex;
   flex: 1;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   min-width: 0;
   color: var(--text-muted);
   font-size: 12px;
@@ -44,10 +48,12 @@
   white-space: nowrap;
 }
 
+/* Ringpad is always keeping the last few seconds: a recording light that sends out a slow ping. */
 .status-dot {
+  position: relative;
   flex: none;
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border: 1.5px solid var(--text-muted);
   border-radius: 50%;
 }
@@ -57,62 +63,155 @@
   background: var(--text);
 }
 
-/* Live strip. */
-.live-card {
+.status-dot.on::after {
+  position: absolute;
+  inset: -1.5px;
+  border: 1px solid var(--text);
+  border-radius: 50%;
+  content: '';
+  opacity: 0;
+  animation: rec-ping 2.8s var(--ease-out) infinite;
+}
+
+@keyframes rec-ping {
+  0% { opacity: 0.5; transform: scale(1); }
+  55%, 100% { opacity: 0; transform: scale(2.6); }
+}
+
+/* The tape. The canvas is one step wider than the window and glides by that step between
+   updates (Tape.tsx); the band on the right is exactly what a clip takes. */
+.tape {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 10px 12px;
 }
 
-.live-canvas {
+.tape-window {
+  position: relative;
+  /* 48px in the default 680px window, taller when the window has height to spare. */
+  height: clamp(48px, calc(100vh - 632px), 80px);
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  /* Older audio fades into the past at the left edge. */
+  mask-image: linear-gradient(to right, transparent, #000 18%);
+}
+
+.tape-canvas {
   display: block;
-  width: 100%;
-  height: 38px;
-  color: var(--text);
+  width: calc(100% * var(--slots) / (var(--slots) - 1));
+  height: 100%;
+  will-change: transform;
 }
 
-.live-caption {
+.tape-band {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: calc(var(--share) * 100%);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  box-shadow: inset 2px 0 0 var(--text);
+}
+
+.clip-button-length {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.tape-caption {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: 12px;
 }
 
-/* Current clip. */
+/* The clip card. */
 .clip-card {
   position: relative;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  min-height: 108px;
-  padding: 10px 12px;
-  transition: border-color var(--dur);
+  padding: 10px 12px 12px 8px;
+  transition: border-color var(--dur-fast) var(--ease-out);
 }
 
-.clip-card.sending {
+/* On air: teammates hear this right now. The ring breathes by opacity only. */
+.clip-card.on-air {
   border-color: var(--text);
 }
 
-/* The panda stands at the left; the clip's waveform reads like what it says. */
+.clip-card.on-air::after {
+  position: absolute;
+  inset: -4px;
+  border: 2px solid var(--text);
+  border-radius: calc(var(--radius) + 4px);
+  content: '';
+  pointer-events: none;
+  animation: on-air 1.2s var(--ease-in-out) infinite;
+}
+
+@keyframes on-air {
+  0%, 100% { opacity: 0.08; }
+  50% { opacity: 0.35; }
+}
+
 .clip-stage {
   display: flex;
-  flex: 1;
   align-items: center;
-  gap: 12px;
-  min-height: 60px;
+  gap: 10px;
+  min-height: 72px;
 }
 
 .clip-panda {
-  flex: none;
-  margin: -2px 0 -3px -2px;
+  margin: -4px -2px -6px 0;
   cursor: pointer;
 }
 
-.clip-stage .clip-wave {
+.clip-body {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.clip-wave-wrap {
+  position: relative;
   flex: 1;
   min-width: 0;
+  height: 48px;
+  overflow: hidden;
+}
+
+.clip-wave {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* As wide as the waveform with its line on the right edge: it slides in from the left, leaving a
+   short tail over what has played. */
+.playhead {
+  position: absolute;
+  inset: 0;
+  border-right: 2px solid var(--text);
+  background: linear-gradient(to left, color-mix(in srgb, var(--text) 12%, transparent), transparent 40%);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-100%);
+  will-change: transform;
+}
+
+.playhead.playing-still {
+  opacity: 1;
+  transform: none;
+}
+
+.clip-length {
+  flex: none;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .clip-empty {
@@ -122,7 +221,6 @@
   align-items: flex-start;
   justify-content: center;
   gap: 6px;
-  align-self: stretch;
 }
 
 .clip-empty-title {
@@ -137,30 +235,48 @@
   font-size: 12px;
 }
 
-.clip-wave {
-  display: block;
-  width: 100%;
-  height: 44px;
-  color: var(--text);
+/* Three actions, each saying who hears it. */
+.clip-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding-left: 4px;
 }
 
-.clip-row {
+.clip-action {
   display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.clip-length {
-  display: flex;
-  flex: 1;
   flex-direction: column;
-  min-width: 0;
-  line-height: 1.2;
+  align-items: stretch;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
 }
 
-.clip-length strong {
-  font-size: 15px;
-  font-variant-numeric: tabular-nums;
+.clip-action .button {
+  width: 100%;
+  pointer-events: none;
+}
+
+.clip-action:hover .button:not(.primary) {
+  background: var(--surface);
+}
+
+.clip-action:hover .button.primary {
+  opacity: 0.88;
+}
+
+.clip-action:active .button {
+  transform: scale(0.97);
+  transition-duration: var(--dur-press);
+}
+
+.clip-action-note {
+  color: var(--text-muted);
+  font-size: 10.5px;
+  text-align: center;
 }
 
 .save-armed {
@@ -168,19 +284,24 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin: 0 -12px -10px;
+  margin: 0 -12px -12px -8px;
   padding: 7px 12px;
   border-radius: 0 0 calc(var(--radius) - 1px) calc(var(--radius) - 1px);
   background: var(--fill);
   color: var(--on-fill);
   font-size: 12px;
+  animation: slide-up var(--dur-move) var(--ease-out);
 }
 
 .save-armed .link-button {
   color: var(--on-fill);
 }
 
-/* Footer: three meters, then what others hear. */
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(6px); }
+}
+
+/* Footer: what teammates hear. */
 .footer {
   display: flex;
   flex-direction: column;
@@ -189,10 +310,12 @@
   border-top: var(--hairline) solid var(--line);
 }
 
-.meters {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+.footer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 20px;
 }
 
 .talk-status {
@@ -220,6 +343,11 @@
 
 .status-chip.outline {
   background: transparent;
+}
+
+.out-meter {
+  height: 8px;
+  border-radius: 4px;
 }
 
 .meter-error {

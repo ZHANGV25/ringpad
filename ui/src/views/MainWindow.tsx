@@ -4,8 +4,8 @@ import { useEngine } from '../state/EngineProvider'
 import type { EngineAction } from '../state/reducer'
 import { ClipCard } from './main/ClipCard'
 import { Footer } from './main/Footer'
-import { LiveStrip } from './main/LiveStrip'
 import { PadGrid } from './main/PadGrid'
+import { Tape } from './main/Tape'
 import { TopBar } from './main/TopBar'
 
 interface Props {
@@ -24,9 +24,9 @@ export function MainWindow({ onSettings }: Props) {
   return (
     <main className="main-shell">
       <TopBar status={state.status} onSettings={onSettings} />
-      <LiveStrip settings={state.settings} peaks={state.livePeaks} />
+      <Tape settings={state.settings} />
       <ClipCard settings={state.settings} clip={state.clip} playback={state.playback} />
-      <PadGrid pads={state.pads} dragSlot={dragSlot} sending={state.playback.sending} />
+      <PadGrid pads={state.pads} clip={state.clip} playback={state.playback} dragSlot={dragSlot} />
       <Footer settings={state.settings} />
     </main>
   )

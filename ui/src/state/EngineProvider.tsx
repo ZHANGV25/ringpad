@@ -1,6 +1,7 @@
-import { createContext, useContext, useEffect, useMemo, useReducer, useRef, useState, type Dispatch, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useReducer, useRef, type Dispatch, type ReactNode } from 'react'
 import type { EngineApi } from '../engine/api'
 import type { Meters } from '../engine/types'
+import { createStore, useStoreSelector, type Store } from '../lib/store'
 import { selectEngineApi } from '../engine/select'
 import { applyTheme } from '../theme'
 import { engineReducer, initialEngineState, type EngineAction, type EngineState } from './reducer'
@@ -12,8 +13,11 @@ interface EngineContextValue {
   dispatch: Dispatch<EngineAction>
 }
 
-interface MeterContextValue {
-  meters: Meters
+/** Values that change many times a second. They never go through React state (see lib/store). */
+export interface Signals {
+  meters: Store<Meters>
+  /** Peaks of the live history, oldest first. */
+  live: Store<number[]>
 }
 
 interface Props {
@@ -24,13 +28,12 @@ interface Props {
 const NOTICE_MS = 4000
 
 const EngineContext = createContext<EngineContextValue | null>(null)
-const MeterContext = createContext<MeterContextValue>({ meters: { source: 0, mic: 0, outgoing: 0 } })
+const SILENT: Meters = { source: 0, mic: 0, outgoing: 0 }
+const SignalsContext = createContext<Signals>({ meters: createStore(SILENT), live: createStore<number[]>([]) })
 
 export function EngineProvider({ api: providedApi, children }: Props) {
   const [state, dispatch] = useReducer(engineReducer, initialEngineState)
-  const meterRef = useRef<Meters>({ source: 0, mic: 0, outgoing: 0 })
-  const [meters, setMeters] = useState<Meters>(meterRef.current)
-  const rafRef = useRef<number | null>(null)
+  const signals = useMemo<Signals>(() => ({ meters: createStore(SILENT), live: createStore<number[]>([]) }), [])
   const noticeIdRef = useRef(1)
   const api = useMemo(() => {
     const report = (message: string) => {
@@ -59,19 +62,6 @@ export function EngineProvider({ api: providedApi, children }: Props) {
   }, [api])
 
   useEffect(() => {
-    const scheduleMeters = () => {
-      if (rafRef.current !== null) {
-        return
-      }
-      if (typeof window.requestAnimationFrame === 'undefined') {
-        setMeters(meterRef.current)
-        return
-      }
-      rafRef.current = window.requestAnimationFrame(() => {
-        rafRef.current = null
-        setMeters(meterRef.current)
-      })
-    }
     const notice = (message: string) => {
       const id = noticeIdRef.current++
       dispatch({ type: 'error', id, message })
@@ -79,11 +69,8 @@ export function EngineProvider({ api: providedApi, children }: Props) {
     }
     const unsubscribers = [
       api.onStatus((status) => dispatch({ type: 'status', status })),
-      api.onMeters((next) => {
-        meterRef.current = next
-        scheduleMeters()
-      }),
-      api.onLive(({ peaks }) => dispatch({ type: 'live', peaks })),
+      api.onMeters((next) => signals.meters.set(next)),
+      api.onLive(({ peaks }) => signals.live.set(peaks)),
       api.onClip((clip) => dispatch({ type: 'clip', clip })),
       api.onPads((pads) => dispatch({ type: 'pads', pads })),
       api.onPlayback((playback) => dispatch({ type: 'playback', playback })),
@@ -97,18 +84,14 @@ export function EngineProvider({ api: providedApi, children }: Props) {
     ]
     return () => {
       unsubscribers.forEach((unsubscribe) => unsubscribe())
-      if (rafRef.current !== null) {
-        window.cancelAnimationFrame?.(rafRef.current)
-      }
     }
-  }, [api])
+  }, [api, signals])
 
   const value = useMemo<EngineContextValue>(() => ({ api, state, dispatch }), [api, state])
-  const meterValue = useMemo<MeterContextValue>(() => ({ meters }), [meters])
 
   return (
     <EngineContext.Provider value={value}>
-      <MeterContext.Provider value={meterValue}>{children}</MeterContext.Provider>
+      <SignalsContext.Provider value={signals}>{children}</SignalsContext.Provider>
     </EngineContext.Provider>
   )
 }
@@ -121,8 +104,13 @@ export function useEngine(): EngineContextValue {
   return value
 }
 
-export function useMeters(): Meters {
-  return useContext(MeterContext).meters
+export function useSignals(): Signals {
+  return useContext(SignalsContext)
+}
+
+/** A slow fact derived from the meters, such as "is anything playing". Return a primitive. */
+export function useMeterSelector<S>(select: (meters: Meters) => S): S {
+  return useStoreSelector(useSignals().meters, select)
 }
 
 function messageFromError(error: unknown): string {

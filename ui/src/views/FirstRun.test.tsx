@@ -5,7 +5,7 @@ import { makeApi, noCableDevices, renderApp } from '../test/render'
 import { setupMood } from './FirstRun'
 
 function guideMood(): string | undefined {
-  return document.querySelector<SVGSVGElement>('.setup-guide svg.panda')?.dataset.mood
+  return document.querySelector<HTMLElement>('.setup-guide .panda')?.dataset.mood
 }
 
 function next(name: string | RegExp = 'Continue') {
@@ -28,7 +28,7 @@ describe('first run', () => {
     next()
     expect(screen.getByText('Test it')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Play test tone' }))
-    await waitFor(() => expect(screen.getByRole('meter', { name: 'Out' }).getAttribute('aria-valuenow')).toBe('92'))
+    await waitFor(() => expect(screen.getByRole('meter', { name: 'Teammates hear' }).getAttribute('aria-valuenow')).toBe('99'))
     fireEvent.click(screen.getByRole('button', { name: /Back/ }))
     expect(screen.getByText('Your virtual mic')).toBeTruthy()
 
@@ -46,7 +46,7 @@ describe('first run', () => {
     next('Start using Ringpad')
     expect(guideMood()).toBe('celebrate')
     expect((screen.getByRole('button', { name: 'Start using Ringpad' }) as HTMLButtonElement).disabled).toBe(true)
-    expect(await screen.findByText('No clip yet', undefined, { timeout: 3000 })).toBeTruthy()
+    expect(await screen.findByText('Something funny just happened?', undefined, { timeout: 3000 })).toBeTruthy()
     expect((await api.getSnapshot()).settings.firstRunDone).toBe(true)
   })
 
