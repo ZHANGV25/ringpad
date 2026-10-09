@@ -8,3 +8,6 @@ repository.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+hound = "3.5"
+rtrb = "0.3"
+thiserror = "1"
