@@ -100,11 +100,13 @@ pub fn resolve_app_pid_from(
 /// Lists audio apps currently present in sessions on active output devices.
 #[cfg(windows)]
 pub fn list_audio_apps() -> Result<Vec<AudioApp>, crate::BackendError> {
+    crate::com::on_mta_thread(enumerate_audio_apps)
+}
+
+#[cfg(windows)]
+fn enumerate_audio_apps() -> Result<Vec<AudioApp>, crate::BackendError> {
     use wasapi::{DeviceEnumerator, Direction, SessionState};
 
-    // COM may already be initialised on this thread (for example as STA on a UI thread);
-    // device and session enumeration work either way, so the result is ignored.
-    let _ = wasapi::initialize_mta();
     let self_pid = std::process::id();
     let enumerator = DeviceEnumerator::new().map_err(crate::BackendError::from_wasapi)?;
     let collection = enumerator

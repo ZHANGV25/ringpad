@@ -34,6 +34,8 @@ export interface Hotkeys {
 export interface Settings {
   theme: ThemePreference
   source: SourceSetting
+  /** Plays a recorded output device in the headphones too (voice chat sent to a spare output). */
+  relaySource: boolean
   virtualOutput: string | null
   mic: string | null
   micEnabled: boolean
@@ -120,9 +122,10 @@ export const DEFAULT_PAD_HOTKEYS: ReadonlyArray<string | null> = [
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
   source: { kind: 'default' },
+  relaySource: false,
   virtualOutput: null,
   mic: null,
-  micEnabled: false,
+  micEnabled: true,
   headphones: null,
   sendVolume: 0.5,
   monitorVolume: 0.6,

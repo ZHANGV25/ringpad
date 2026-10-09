@@ -52,9 +52,12 @@ describe('audio tab', () => {
 
     fireEvent.change(source, { target: { value: 'app:Discord.exe' } })
     await waitFor(async () => expect((await settingsOf(api)).source).toEqual({ kind: 'app', exe: 'Discord.exe', name: 'Discord' }))
+    expect(screen.queryByRole('switch', { name: /Play it in my headphones/ })).toBeNull()
     fireEvent.change(source, { target: { value: 'device:speakers' } })
     await waitFor(async () => expect((await settingsOf(api)).source).toEqual({ kind: 'device', id: 'speakers' }))
     expect(source.value).toBe('device:speakers')
+    fireEvent.click(screen.getByRole('switch', { name: /Play it in my headphones/ }))
+    await waitFor(async () => expect((await settingsOf(api)).relaySource).toBe(true))
     fireEvent.change(source, { target: { value: 'default' } })
     await waitFor(async () => expect((await settingsOf(api)).source).toEqual({ kind: 'default' }))
 
@@ -95,7 +98,9 @@ describe('audio tab', () => {
     await waitFor(async () => expect((await settingsOf(api)).headphones).toBe('speakers'))
 
     const mic = screen.getByRole('combobox', { name: 'Mic device' }) as HTMLSelectElement
-    expect(mic.disabled).toBe(true)
+    expect(mic.disabled).toBe(false)
+    fireEvent.click(screen.getByRole('switch', { name: /Pass my mic through/ }))
+    await waitFor(() => expect(mic.disabled).toBe(true))
     fireEvent.click(screen.getByRole('switch', { name: /Pass my mic through/ }))
     await waitFor(() => expect(mic.disabled).toBe(false))
     fireEvent.change(mic, { target: { value: 'mic' } })

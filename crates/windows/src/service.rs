@@ -50,6 +50,9 @@ pub struct ServiceConfig {
     pub ducking: bool,
     /// Rolling history length in seconds.
     pub history_seconds: f32,
+    /// Plays the recorded source in the headphones too. For voice chat sent to an output
+    /// with nothing plugged in (such as S/PDIF), which the user would otherwise not hear.
+    pub forward_source: bool,
 }
 
 impl ServiceConfig {
@@ -62,7 +65,6 @@ impl ServiceConfig {
     pub fn engine_config(&self, default_output_id: Option<&str>) -> EngineConfig {
         let mut config = EngineConfig::new(RATE, RATE, self.mic_id.as_ref().map(|_| RATE), RATE);
         config.monitoring = self.headphones_id.is_some();
-        config.forward_source = false;
         let recorded_output = match &self.source {
             SourceSpec::DefaultOutputLoopback => default_output_id,
             SourceSpec::DeviceLoopback(id) => Some(id.as_str()),
@@ -70,6 +72,9 @@ impl ServiceConfig {
         };
         config.recording_headphones =
             recorded_output.is_some() && recorded_output == self.headphones_id.as_deref();
+        // Relaying the headphones into themselves would play everything twice.
+        config.forward_source =
+            self.forward_source && config.monitoring && !config.recording_headphones;
         config.send_volume = self.send_volume;
         config.monitor_volume = self.monitor_volume;
         config.ducking = self.ducking;

@@ -14,7 +14,7 @@ The UI calls Tauri commands with camelCase argument objects and listens to the e
 
 `Hotkeys`: `grab`, `send`, `sendAlt`, `stop`, `save`, each a key string or `null`.
 
-`Settings`: theme, source, virtualOutput, mic, micEnabled, headphones, sendVolume, monitorVolume, ducking, historySeconds, grabSeconds, hotkeys, startMinimized, startWithWindows, clipRetentionDays, firstRunDone.
+`Settings`: theme, source, relaySource, virtualOutput, mic, micEnabled, headphones, sendVolume, monitorVolume, ducking, historySeconds, grabSeconds, hotkeys, startMinimized, startWithWindows, clipRetentionDays, firstRunDone.
 
 `EngineStatus`: `{ kind: 'starting' }`, `{ kind: 'running', sourceLabel }`, `{ kind: 'stopped', reason }`, or `{ kind: 'needsSetup', reason }`.
 

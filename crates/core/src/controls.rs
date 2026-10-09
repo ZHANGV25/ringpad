@@ -56,9 +56,29 @@ impl SaveArm {
         armed
     }
 
+    /// Returns whether save-arm is currently active.
+    #[must_use]
+    pub fn is_armed(&self, now: f64) -> bool {
+        self.armed(now)
+    }
+
     fn armed(&self, now: f64) -> bool {
         self.armed_at
             .map(|armed_at| now - armed_at <= self.timeout)
             .unwrap_or(false)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn save_arm_reports_current_state() {
+        let mut arm = SaveArm::new(5.0);
+        assert!(!arm.is_armed(1.0));
+        assert!(arm.toggle(10.0));
+        assert!(arm.is_armed(14.9));
+        assert!(!arm.is_armed(15.1));
     }
 }

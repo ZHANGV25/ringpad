@@ -34,7 +34,7 @@ export function AudioTab({ settings }: TabProps) {
           value={settings.headphones ?? ''}
           onChange={(event) => update({ headphones: event.currentTarget.value || null })}
         >
-          <option value="">Off (no preview)</option>
+          <option value="">Same as Windows</option>
           {outputs.map((device) => (
             <option key={device.id} value={device.id}>
               {device.name}
@@ -121,6 +121,14 @@ export function SourcePicker({ settings }: TabProps) {
         </IconButton>
       </div>
       <span className="hint">For the cleanest clips, pick the app your teammates talk in. Apps playing sound now have a ●.</span>
+      {settings.source.kind === 'device' ? (
+        <Toggle
+          checked={settings.relaySource}
+          label="Play it in my headphones"
+          hint="Turn on when voice chat goes to an output with nothing plugged in, like Realtek Digital Output."
+          onChange={(relaySource) => void api.updateSettings({ patch: { relaySource } })}
+        />
+      ) : null}
     </>
   )
 }

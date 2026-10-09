@@ -257,11 +257,16 @@ impl Engine {
 
     fn add_preview(&mut self, engine_len: usize) {
         let Some(preview) = self.preview.as_mut() else {
+            self.shared.previewing.store(false, Ordering::Release);
             return;
         };
         let was_playing = preview.playing();
         preview.pull_into(&mut self.clip_scratch[..engine_len]);
-        if was_playing || preview.playing() {
+        let preview_playing = was_playing || preview.playing();
+        self.shared
+            .previewing
+            .store(preview_playing, Ordering::Release);
+        if preview_playing {
             if let Some(gate) = self.gate.as_mut() {
                 gate.mark(self.now_seconds);
             }
@@ -320,10 +325,12 @@ impl Engine {
     fn play_preview(&mut self, clip: Clip) {
         let Some(preview) = self.preview.as_mut() else {
             self.retire_clip(clip);
+            self.shared.previewing.store(false, Ordering::Release);
             return;
         };
         let mut retired = VecRetire::new();
         preview.play_for_audio(clip, |old_clip| retired.push(old_clip));
+        self.shared.previewing.store(true, Ordering::Release);
         self.retire_all(retired);
     }
 
@@ -336,6 +343,7 @@ impl Engine {
         if let Some(preview) = self.preview.as_mut() {
             preview.stop();
         }
+        self.shared.previewing.store(false, Ordering::Release);
     }
 
     fn retire_all(&mut self, retired: VecRetire) {
@@ -398,5 +406,28 @@ impl Engine {
             self.duck_state = (self.duck_state - step).max(target);
         }
         self.duck_state
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::clip::clip_from_vec;
+
+    #[test]
+    fn handle_reports_preview_playback_state() {
+        let config = EngineConfig::new(48_000, 48_000, None, 48_000);
+        let (mut engine, mut handle) = Engine::new(config);
+        assert!(!handle.previewing());
+
+        handle
+            .play_preview_clip(clip_from_vec(vec![0.2; 64]))
+            .expect("preview command queues");
+        engine.render_headphones(&mut [0.0; 32]);
+        assert!(handle.previewing());
+
+        engine.render_headphones(&mut [0.0; 128]);
+        engine.render_headphones(&mut [0.0; 1]);
+        assert!(!handle.previewing());
     }
 }

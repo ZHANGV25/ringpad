@@ -11,8 +11,18 @@ rust-version.workspace = true
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-autostart = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-single-instance = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+thiserror = "1"
+log = "0.4"
+symphonia = { version = "0.5", features = ["mp3", "ogg", "vorbis", "flac", "wav", "pcm"] }
 ringpad-core.workspace = true
 ringpad-windows.workspace = true
+
+[dev-dependencies]
+hound = "3.5"
+tempfile = "3"

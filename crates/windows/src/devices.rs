@@ -80,11 +80,13 @@ pub fn classify_device_name(name: &str) -> Option<VirtualCable> {
 /// Lists active playback and capture devices.
 #[cfg(windows)]
 pub fn list_devices() -> Result<Vec<DeviceInfo>, crate::BackendError> {
+    crate::com::on_mta_thread(enumerate_devices)
+}
+
+#[cfg(windows)]
+fn enumerate_devices() -> Result<Vec<DeviceInfo>, crate::BackendError> {
     use wasapi::{DeviceEnumerator, Direction};
 
-    // COM may already be initialised on this thread (for example as STA on a UI thread);
-    // device and session enumeration work either way, so the result is ignored.
-    let _ = wasapi::initialize_mta();
     let enumerator = DeviceEnumerator::new().map_err(crate::BackendError::from_wasapi)?;
     let default_output = default_id(&enumerator, &Direction::Render);
     let default_input = default_id(&enumerator, &Direction::Capture);

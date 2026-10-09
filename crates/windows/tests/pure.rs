@@ -208,7 +208,34 @@ fn service_config(source: SourceSpec, headphones: Option<&str>) -> ServiceConfig
         monitor_volume: 0.6,
         ducking: true,
         history_seconds: 45.0,
+        forward_source: false,
     }
+}
+
+#[test]
+fn relays_a_separate_source_to_the_headphones_only_when_asked() {
+    let relay = |source, headphones: Option<&str>| ServiceConfig {
+        forward_source: true,
+        ..service_config(source, headphones)
+    };
+    let spdif = || SourceSpec::DeviceLoopback("spdif".to_string());
+    assert!(
+        relay(spdif(), Some("phones"))
+            .engine_config(None)
+            .forward_source
+    );
+    assert!(
+        !service_config(spdif(), Some("phones"))
+            .engine_config(None)
+            .forward_source
+    );
+    assert!(!relay(spdif(), None).engine_config(None).forward_source);
+    let phones = SourceSpec::DeviceLoopback("phones".to_string());
+    assert!(
+        !relay(phones, Some("phones"))
+            .engine_config(None)
+            .forward_source
+    );
 }
 
 #[test]

@@ -191,6 +191,12 @@ impl EngineHandle {
         self.shared.sending.load(Ordering::Acquire)
     }
 
+    /// Returns true when the audio thread reports preview playback.
+    #[must_use]
+    pub fn previewing(&self) -> bool {
+        self.shared.previewing.load(Ordering::Acquire)
+    }
+
     /// Returns the latest peak meters.
     #[must_use]
     pub fn meters(&self) -> PeakMeters {
@@ -215,6 +221,7 @@ pub(crate) struct SharedState {
     pub(crate) duck_gain: AtomicF32,
     pub(crate) ducking: AtomicBool,
     pub(crate) sending: AtomicBool,
+    pub(crate) previewing: AtomicBool,
     pub(crate) source_peak: AtomicF32,
     pub(crate) mic_peak: AtomicF32,
     pub(crate) outgoing_peak: AtomicF32,
@@ -238,6 +245,7 @@ impl SharedState {
             duck_gain: AtomicF32::new(duck_gain),
             ducking: AtomicBool::new(ducking),
             sending: AtomicBool::new(false),
+            previewing: AtomicBool::new(false),
             source_peak: AtomicF32::new(0.0),
             mic_peak: AtomicF32::new(0.0),
             outgoing_peak: AtomicF32::new(0.0),

@@ -3,6 +3,7 @@
 //! Implements the engine's platform traits with WASAPI (device loopback, per-app process
 //! loopback, render to the virtual mic and headphones) and Raw Input for hotkeys.
 
+mod com;
 pub mod devices;
 pub mod hotkeys;
 pub mod mixdown;
