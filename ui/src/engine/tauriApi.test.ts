@@ -63,6 +63,7 @@ describe('tauri api', () => {
       [() => tauriApi.openExternal({ url: 'https://x.dev' }), 'open_external', { url: 'https://x.dev' }],
       [() => tauriApi.openClipsFolder(), 'open_clips_folder'],
       [() => tauriApi.testTalkKeys(), 'test_talk_keys'],
+      [() => tauriApi.installVirtualMic(), 'install_virtual_mic'],
     ]
     for (const [run, name, args] of calls) {
       await run()

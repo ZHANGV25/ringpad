@@ -81,14 +81,10 @@ describe('audio tab', () => {
     await waitFor(async () => expect((await settingsOf(api)).virtualOutput).toBe('voicemod-output'))
   })
 
-  it('links to VB-CABLE when there is no virtual cable', async () => {
-    const api = await openSettings(makeApi({ devices: noCableDevices() }))
+  it('offers to install VB-CABLE when there is no virtual cable', async () => {
+    await openSettings(makeApi({ devices: noCableDevices() }))
     expect(screen.getByText('No virtual cable found')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: /Get VB-CABLE/ }))
-    await waitFor(() => expect(api.openedUrl).toBe('https://vb-audio.com/Cable/'))
-    const list = vi.spyOn(api, 'listDevices')
-    fireEvent.click(screen.getByRole('button', { name: 'Check again' }))
-    expect(list).toHaveBeenCalledOnce()
+    expect(screen.getByRole('button', { name: 'Install VB-CABLE' })).toBeTruthy()
   })
 
   it('changes headphones, mic and levels', async () => {

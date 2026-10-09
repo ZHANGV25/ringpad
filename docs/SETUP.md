@@ -92,5 +92,11 @@ whatever it sends shows up there.
 **Keys don't work in one game.** If the game runs as administrator, Windows hides its key presses
 from apps that aren't. Run Ringpad as administrator too.
 
-**"No virtual cable found".** Install VB-CABLE, restart Windows, then press **Check again** in
-Settings > Audio.
+**"No virtual cable found".** Press **Install VB-CABLE** in Settings > Audio and say yes to both
+Windows prompts. If Ringpad then asks for a restart, restart Windows. You can also install
+VB-CABLE yourself from [vb-audio.com/Cable](https://vb-audio.com/Cable/) and press
+**Check again**.
+
+**Removing VB-CABLE.** Uninstalling Ringpad leaves VB-CABLE in place, since other apps may use it.
+To remove it, run `VBCABLE_Setup_x64.exe` from VB-CABLE's download (or from Ringpad's install
+folder, under `vbcable`), choose **Remove Driver**, and restart.

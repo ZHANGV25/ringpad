@@ -20,6 +20,27 @@ describe('fake engine', () => {
     await expect(api.openExternal({ url: 'http://example.com' })).rejects.toThrow('Only https links can be opened')
   })
 
+  it('adds VB-CABLE once when it installs, and can decline or fail', async () => {
+    const api = createFakeApi({ startTimers: false, devices: [] })
+    const devices = vi.fn()
+    api.onDevices(devices)
+    api.nextCableInstall = 'declined'
+    expect(await api.installVirtualMic()).toBe('declined')
+    expect(devices).not.toHaveBeenCalled()
+
+    api.nextCableInstall = 'installed'
+    expect(await api.installVirtualMic()).toBe('installed')
+    expect(await api.installVirtualMic()).toBe('installed')
+    expect(devices).toHaveBeenCalledOnce()
+    expect((await api.listDevices()).map((device) => device.name)).toEqual([
+      'CABLE Input (VB-Audio Virtual Cable)',
+      'CABLE Output (VB-Audio Virtual Cable)',
+    ])
+
+    api.nextCableInstall = new Error('no admin')
+    await expect(api.installVirtualMic()).rejects.toThrow('no admin')
+  })
+
   it('names imported pads from the file and falls back to the slot', async () => {
     const api = createFakeApi({ startTimers: false })
     expect((await api.importPad({ slot: 2, path: 'C:\\sounds\\airhorn.wav' })).name).toBe('airhorn')

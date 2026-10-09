@@ -40,7 +40,8 @@ export function FirstRun({ onFinish }: Props) {
     if (reducedMotion()) done()
     else window.setTimeout(done, CELEBRATE_MS)
   }
-  const nextLabel = last ? 'Start using Ringpad' : step === 0 && !hasCable(state.devices) ? 'Skip for now' : 'Continue'
+  const skipping = step === 0 && !hasCable(state.devices)
+  const nextLabel = last ? 'Start using Ringpad' : skipping ? 'Skip for now' : 'Continue'
   return (
     <main className="setup-shell">
       <header className="setup-head">
@@ -69,7 +70,7 @@ export function FirstRun({ onFinish }: Props) {
         </button>
         <button
           type="button"
-          className="button primary"
+          className={skipping ? 'button' : 'button primary'}
           disabled={finishing}
           onClick={() => (last ? finish() : setStep((value) => value + 1))}
         >

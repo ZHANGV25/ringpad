@@ -29,21 +29,20 @@ For push-to-talk-only games such as Valorant team chat, Ringpad can hold the gam
 a clip plays, or while your mic is on. It uses a normal Windows key press, needs no driver, and
 does not touch the game. This is off by default.
 
-Windows only lets an app add a microphone through a virtual audio cable, so Ringpad needs one.
-[VB-CABLE](https://vb-audio.com/Cable/) is free and takes a minute to install. Voicemod's and
-VoiceMeeter's virtual devices work too.
+Windows only lets an app add a microphone through a virtual audio cable, so Ringpad needs one. If
+your PC has none, Ringpad installs [VB-CABLE](https://vb-audio.com/Cable/) for you: it ships with
+Ringpad and takes one click. Voicemod's and VoiceMeeter's virtual devices work too.
 
 ## Install
 
-1. Install [VB-CABLE](https://vb-audio.com/Cable/) (or skip this if you have Voicemod or
-   VoiceMeeter) and restart.
-2. Download `Ringpad_x.y.z_x64-setup.exe` from
+1. Download `Ringpad_x.y.z_x64-setup.exe` from
    [Releases](https://github.com/ZHANGV25/ringpad/releases) and run it. It installs for your user
    only, with no admin prompt. Windows may say it "protected your PC" because the installer is
    not signed yet: choose **More info**, then **Run anyway**.
-3. Ringpad opens a short setup: it finds the cable, plays a test tone, asks what to record and
-   shows your keys.
-4. In Discord or your game, set your **microphone** (input device) to the cable's output, for
+2. Ringpad opens a short setup. If it finds no virtual cable, press **Install VB-CABLE**. Windows
+   asks twice, once for admin rights and once to install VB-Audio's driver; say yes to both. Then
+   it plays a test tone, asks what to record and shows your keys.
+3. In Discord or your game, set your **microphone** (input device) to the cable's output, for
    example **CABLE Output (VB-Audio Virtual Cable)**.
 
 That's it. Your voice still reaches your team: Ringpad passes your real mic through the same
@@ -107,7 +106,14 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the layout and code style.
 | `app` | Tauri 2 shell: commands, settings, pads on disk, tray |
 | `ui` | React and TypeScript interface, monochrome light and dark themes |
 | `docs/IPC.md` | Commands and events between the interface and the app |
+| `third_party/vb-cable` | VB-Audio's VB-CABLE driver pack, unchanged, bundled into the installer |
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE), except `third_party/` (see Credits).
+
+## Credits
+
+[VB-CABLE](https://vb-audio.com/Cable/), the virtual cable Ringpad can install, is made by
+VB-Audio Software and is not covered by Ringpad's MIT license. VB-CABLE is a donationware, all
+participations are welcome: www.vb-cable.com. See [third_party/README.md](third_party/README.md).

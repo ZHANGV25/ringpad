@@ -4,6 +4,7 @@ import { IconButton, KeyChip, Segmented, Slider, Toggle } from '../components/co
 import { ExternalLinkIcon, TrashIcon } from '../components/icons'
 import { Panda } from '../components/panda/Panda'
 import { useEngine } from '../state/EngineProvider'
+import { VbCableCredit } from './CableInstall'
 
 const THEME_LABELS: Record<ThemePreference, string> = { system: 'System', light: 'Light', dark: 'Dark' }
 const REPO_URL = 'https://github.com/ZHANGV25/ringpad'
@@ -133,6 +134,9 @@ export function AboutTab() {
       <p>
         <strong>Use it kindly.</strong> Replaying people to mock or harass them breaks most games' rules. Clip what's
         funny or useful, not to target someone.
+      </p>
+      <p>
+        <strong>Virtual cable.</strong> Ringpad can install VB-CABLE for you. <VbCableCredit inText />
       </p>
     </section>
   )

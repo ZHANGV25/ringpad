@@ -58,5 +58,7 @@ export function withReporting(api: EngineApi, report: Report, onDevices: OnDevic
     openExternal: (args) => guard(() => api.openExternal(args)),
     openClipsFolder: () => guard(() => api.openClipsFolder()),
     testTalkKeys: () => guard(() => api.testTalkKeys()),
+    // Not guarded: the install button shows its own failure and must leave its busy state.
+    installVirtualMic: () => api.installVirtualMic(),
   }
 }

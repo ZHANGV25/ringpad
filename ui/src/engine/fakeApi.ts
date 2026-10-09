@@ -1,5 +1,5 @@
 import type { EngineApi, FileDropEvent, Unsubscribe } from './api'
-import { DEFAULT_PAD_HOTKEYS, DEFAULT_SETTINGS, DEFAULT_TALK, type AudioApp, type ClipInfo, type DeviceInfo, type EngineStatus, type Meters, type PadInfo, type Playback, type Settings, type SettingsPatch, type Snapshot, type TalkState } from './types'
+import { DEFAULT_PAD_HOTKEYS, DEFAULT_SETTINGS, DEFAULT_TALK, type AudioApp, type CableInstall, type ClipInfo, type DeviceInfo, type EngineStatus, type Meters, type PadInfo, type Playback, type Settings, type SettingsPatch, type Snapshot, type TalkState } from './types'
 import type { EventName, EventPayloads, Listener } from './fakeEvents'
 import { nextTalkState, talkEqual, validateTalkSettings } from './fakeTalk'
 import { cleanName, clamp, cloneClip, cloneDevices, clonePad, clonePads, cloneSettings, cloneTalk, makeApps, makeClip, makeDevices, makePad, makePeaks, requirePad, seededRandom, speechLevel, walk } from './fakeData'
@@ -12,6 +12,11 @@ interface FakeOptions {
   devices?: DeviceInfo[]
 }
 const LIVE_PEAKS = 300
+/** The two endpoints VB-CABLE adds, named as Windows lists them. */
+const VB_CABLE_DEVICES: ReadonlyArray<DeviceInfo> = [
+  { id: 'vb-output', name: 'CABLE Input (VB-Audio Virtual Cable)', direction: 'output', isDefault: false, virtualCable: 'vbcable' },
+  { id: 'vb-input', name: 'CABLE Output (VB-Audio Virtual Cable)', direction: 'input', isDefault: false, virtualCable: 'vbcable' },
+]
 export class FakeEngineApi implements EngineApi {
   private readonly listeners = new Map<EventName, Set<(payload: never) => void>>()
   private readonly now: () => number
@@ -23,7 +28,7 @@ export class FakeEngineApi implements EngineApi {
   private liveTick = 0
   private livePeaks: number[] = []
   private apps = makeApps()
-  private readonly devices: DeviceInfo[]
+  private devices: DeviceInfo[]
   private status = { kind: 'running' as const, sourceLabel: 'your headphones' }
   private settings: Settings
   private talk: TalkState = cloneTalk(DEFAULT_TALK)
@@ -39,6 +44,8 @@ export class FakeEngineApi implements EngineApi {
   private talkTestTimer: number | null = null
   public openedUrl: string | null = null
   public clipsFolderOpened = false
+  /** What the next VB-CABLE install reports; an Error makes it fail. */
+  public nextCableInstall: CableInstall | Error = 'installed'
   constructor(options: FakeOptions = {}) {
     this.now = options.now ?? (() => Date.now())
     this.random = options.random ?? seededRandom(7)
@@ -227,6 +234,16 @@ export class FakeEngineApi implements EngineApi {
 
   async openClipsFolder(): Promise<void> {
     this.clipsFolderOpened = true
+  }
+
+  async installVirtualMic(): Promise<CableInstall> {
+    const outcome = this.nextCableInstall
+    if (outcome instanceof Error) throw outcome
+    if (outcome === 'installed' && !this.devices.some((device) => device.virtualCable === 'vbcable')) {
+      this.devices = [...this.devices, ...VB_CABLE_DEVICES]
+      this.emit('devices', cloneDevices(this.devices))
+    }
+    return outcome
   }
 
   async testTalkKeys(): Promise<void> {

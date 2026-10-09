@@ -33,6 +33,8 @@ export interface Hotkeys {
 }
 
 export type MicMode = 'open' | 'pushToTalk' | 'toggle'
+/** How installing the bundled VB-CABLE ended. */
+export type CableInstall = 'installed' | 'declined' | 'needsRestart'
 export type PressTalkKeys = 'off' | 'clips' | 'clipsAndMic'
 
 export interface Settings {

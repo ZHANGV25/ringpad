@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AudioApp, Meters, Settings, SettingsPatch } from '../engine/types'
 import { IconButton, Slider, Toggle } from '../components/controls'
-import { ExternalLinkIcon, RefreshIcon } from '../components/icons'
+import { RefreshIcon } from '../components/icons'
 import { LevelMeter } from '../components/LevelMeter'
 import { useEngine } from '../state/EngineProvider'
-
-const VB_CABLE_URL = 'https://vb-audio.com/Cable/'
+import { NoCableCallout, SwitchToVbCable } from './CableInstall'
 
 interface TabProps {
   settings: Settings
@@ -132,27 +131,12 @@ export function SourcePicker({ settings }: TabProps) {
   )
 }
 
-/** Choose the virtual cable clips are sent through, or explain how to get one. */
+/** Choose the virtual cable clips are sent through, or install the one Ringpad ships with. */
 export function VirtualMicPicker({ settings }: TabProps) {
   const { api, state } = useEngine()
   const cables = state.devices.filter((device) => device.direction === 'output' && device.virtualCable)
   if (cables.length === 0) {
-    return (
-      <div className="callout">
-        <strong>No virtual cable found</strong>
-        <span className="hint">
-          Windows only lets an app add a microphone through a virtual cable. VB-CABLE is free and takes a minute to install.
-        </span>
-        <div className="row-actions">
-          <button type="button" className="button small primary" onClick={() => void api.openExternal({ url: VB_CABLE_URL })}>
-            <ExternalLinkIcon /> Get VB-CABLE (free)
-          </button>
-          <button type="button" className="button small" onClick={() => void api.listDevices()}>
-            Check again
-          </button>
-        </div>
-      </div>
-    )
+    return <NoCableCallout />
   }
   return (
     <>
@@ -170,6 +154,7 @@ export function VirtualMicPicker({ settings }: TabProps) {
       <span className="hint">
         In your game or Discord, choose <strong>{state.virtualCaptureHint ?? 'the cable output'}</strong> as your microphone.
       </span>
+      {cables.some((device) => device.virtualCable === 'vbcable') ? null : <SwitchToVbCable />}
     </>
   )
 }

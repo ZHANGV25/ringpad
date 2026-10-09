@@ -14,6 +14,7 @@ mod runtime;
 mod settings;
 mod talk;
 mod tray;
+mod virtual_mic;
 mod window_state;
 
 use std::sync::atomic::Ordering;
@@ -56,7 +57,8 @@ fn main() {
             commands::play_test_tone,
             commands::test_talk_keys,
             commands::open_external,
-            commands::open_clips_folder
+            commands::open_clips_folder,
+            virtual_mic::install_virtual_mic
         ]);
 
     let app = match builder.build(tauri::generate_context!()) {

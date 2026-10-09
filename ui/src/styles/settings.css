@@ -78,6 +78,36 @@
   gap: 6px;
 }
 
+.callout .hint[role='status']:empty {
+  display: none;
+}
+
+.credit {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.credit .link-button {
+  color: inherit;
+  font-weight: 500;
+}
+
+.cable-switch {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.cable-switch .hint[role='status']:empty {
+  display: none;
+}
+
+.link-button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
 .talk-key-list {
   display: flex;
   flex-wrap: wrap;

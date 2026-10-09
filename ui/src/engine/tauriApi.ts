@@ -6,6 +6,7 @@ import type { EngineApi, FileDropEvent, Unsubscribe } from './api'
 import { normalizeAsyncUnlisten } from './api'
 import type {
   AudioApp,
+  CableInstall,
   ClipInfo,
   DeviceInfo,
   EngineStatus,
@@ -63,6 +64,7 @@ export const tauriApi: EngineApi = {
   openExternal: (args: { url: string }) => command<void>('open_external', args),
   openClipsFolder: () => command<void>('open_clips_folder'),
   testTalkKeys: () => command<void>('test_talk_keys'),
+  installVirtualMic: () => command<CableInstall>('install_virtual_mic'),
   onStatus: (handler: (status: EngineStatus) => void) => event('status', handler),
   onMeters: (handler: (meters: Meters) => void) => event('meters', handler),
   onLive: (handler: (payload: { peaks: number[] }) => void) => event('live', handler),

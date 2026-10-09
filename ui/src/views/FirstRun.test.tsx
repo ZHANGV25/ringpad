@@ -54,6 +54,9 @@ describe('first run', () => {
     await renderApp(makeApi({ firstRunDone: false, devices: noCableDevices() }))
     expect(screen.getByText('No virtual cable found')).toBeTruthy()
     expect(guideMood()).toBe('confused')
+    // Installing the cable is the main action here, so skipping is not styled as one.
+    expect(screen.getByRole('button', { name: 'Skip for now' }).className).not.toMatch(/primary/)
+    expect(screen.getByRole('button', { name: 'Install VB-CABLE' }).className).toMatch(/primary/)
     next('Skip for now')
     expect(screen.getByText('Test it')).toBeTruthy()
   })

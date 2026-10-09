@@ -1,5 +1,6 @@
 import type {
   AudioApp,
+  CableInstall,
   ClipInfo,
   DeviceInfo,
   EngineStatus,
@@ -47,6 +48,7 @@ export interface EngineApi {
   openExternal(args: { url: string }): Promise<void>
   openClipsFolder(): Promise<void>
   testTalkKeys(): Promise<void>
+  installVirtualMic(): Promise<CableInstall>
   onStatus(handler: (status: EngineStatus) => void): Unsubscribe
   onMeters(handler: (meters: Meters) => void): Unsubscribe
   onLive(handler: (payload: { peaks: number[] }) => void): Unsubscribe

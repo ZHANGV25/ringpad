@@ -36,6 +36,8 @@ Talk settings and defaults: `micMode` `open`; `pressTalkKeys` `off`; `gameTalkKe
 
 `Snapshot`: version, backend, status, settings, devices, clip, pads, playback, virtualCaptureHint, talk.
 
+`CableInstall`: `installed | declined | needsRestart`.
+
 ## Commands
 
 - `get_snapshot() -> Snapshot`
@@ -59,6 +61,7 @@ Talk settings and defaults: `micMode` `open`; `pressTalkKeys` `off`; `gameTalkKe
 - `open_external({ url })`
 - `open_clips_folder()`
 - `test_talk_keys()`: holds `gameTalkKeys` for 2 seconds (ignoring `talkOnlyApp`) and emits `talk` as it presses and releases. Rejects with the `blocked` sentence when Windows refuses the press.
+- `install_virtual_mic() -> CableInstall`: runs the bundled VB-CABLE setup (`vbcable/VBCABLE_Setup_x64.exe -i -h` under the resource folder) through the Windows admin prompt and waits for it. `declined` means No at the admin prompt. After setup exits it lists devices for up to 10 s: `installed` once VB-CABLE's playback side shows up (and emits `devices`), else `needsRestart`. Rejects when the setup is missing or still running after 10 minutes. The UI then sets `virtualOutput` to CABLE Input.
 
 ## Events
 

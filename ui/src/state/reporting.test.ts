@@ -63,6 +63,7 @@ describe('withReporting', () => {
     await api.openExternal({ url: 'https://example.com' })
     await api.openClipsFolder()
     await api.testTalkKeys()
+    expect(await api.installVirtualMic()).toBe('installed')
     expect(report).not.toHaveBeenCalled()
     expect(fake.lastPad()).toBe(0)
     expect(fake.openedUrl).toBe('https://example.com')

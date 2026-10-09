@@ -5,6 +5,7 @@
 
 mod com;
 pub mod devices;
+pub mod elevate;
 pub mod hotkeys;
 pub mod mixdown;
 pub mod service;
@@ -15,6 +16,7 @@ pub mod watcher;
 use thiserror::Error;
 
 pub use devices::{DeviceDirection, DeviceInfo, DevicePickError, VirtualCable};
+pub use elevate::ElevatedRun;
 pub use hotkeys::{HotkeyEvent, HotkeyListener, RawKeyboardEvent, RawMouseEvent};
 pub use service::{AudioService, ServiceConfig, ServiceStatus, SourceSpec};
 pub use sessions::{AudioApp, SessionError};
@@ -39,6 +41,9 @@ pub enum BackendError {
     /// Audio or input thread startup failed.
     #[error("thread start failed: {0}")]
     ThreadStart(String),
+    /// A helper program could not be started or waited on.
+    #[error("could not run {0}")]
+    Launch(String),
 }
 
 impl BackendError {
