@@ -194,10 +194,9 @@
   gap: 12px;
 }
 
-.about-head .mark {
-  width: 34px;
-  height: 34px;
-  stroke-width: 1.4;
+.about-head .panda {
+  flex: none;
+  cursor: pointer;
 }
 
 .about-head h1 {
@@ -250,14 +249,66 @@
   letter-spacing: -0.01em;
 }
 
-.setup-intro {
+/* First run: the panda talks the user through each step from a speech bubble. */
+.setup-guide {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: flex-end;
+  gap: 10px;
 }
 
-.setup-intro p {
+.setup-guide .panda {
+  flex: none;
+  cursor: pointer;
+}
+
+.bubble {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 30px;
+  padding: 12px 14px;
+  border: var(--hairline) solid var(--line-strong);
+  border-radius: 14px;
+  background: var(--surface);
+  transform-origin: 0% 100%;
+  animation: bubble-in 420ms cubic-bezier(0.2, 1.3, 0.4, 1) both;
+}
+
+/* The tail, pointing at the panda's mouth. */
+.bubble::before {
+  position: absolute;
+  bottom: 12px;
+  left: -6.5px;
+  width: 11px;
+  height: 11px;
+  border-bottom: var(--hairline) solid var(--line-strong);
+  border-left: var(--hairline) solid var(--line-strong);
+  background: var(--surface);
+  content: '';
+  transform: rotate(45deg);
+}
+
+.bubble p {
   color: var(--text-muted);
+}
+
+@keyframes bubble-in {
+  from {
+    opacity: 0;
+    transform: translateX(-6px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bubble {
+    animation: none;
+  }
 }
 
 .found {

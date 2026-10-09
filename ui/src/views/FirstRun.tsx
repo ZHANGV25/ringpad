@@ -2,6 +2,9 @@ import { useState } from 'react'
 import type { DeviceInfo, Settings } from '../engine/types'
 import { Meter } from '../components/Meter'
 import { BackIcon, CheckIcon } from '../components/icons'
+import { Panda } from '../components/panda/Panda'
+import type { PandaMood } from '../components/panda/Panda'
+import { reducedMotion } from '../components/panda/motion'
 import { useEngine, useMeters } from '../state/EngineProvider'
 import { SourcePicker, VirtualMicPicker } from './SettingsAudio'
 import { HotkeyRow } from './SettingsHotkeys'
@@ -11,6 +14,10 @@ interface Props {
 }
 
 const STEP_COUNT = 4
+/** About one hop of the celebrate loop before the main window takes over. */
+const CELEBRATE_MS = 900
+/** Outgoing level above which the test tone counts as playing. */
+const TALK_LEVEL = 0.02
 const CABLE_NAMES: Record<string, string> = {
   vbcable: 'VB-CABLE',
   voicemod: 'Voicemod',
@@ -21,12 +28,18 @@ const CABLE_NAMES: Record<string, string> = {
 export function FirstRun({ onFinish }: Props) {
   const { api, state } = useEngine()
   const [step, setStep] = useState(0)
+  const [finishing, setFinishing] = useState(false)
   const settings = state.settings
   if (!settings) {
     return null
   }
   const last = step === STEP_COUNT - 1
-  const finish = () => void api.updateSettings({ patch: { firstRunDone: true } }).then(onFinish)
+  const finish = () => {
+    setFinishing(true)
+    const done = () => void api.updateSettings({ patch: { firstRunDone: true } }).then(onFinish)
+    if (reducedMotion()) done()
+    else window.setTimeout(done, CELEBRATE_MS)
+  }
   const nextLabel = last ? 'Start using Ringpad' : step === 0 && !hasCable(state.devices) ? 'Skip for now' : 'Continue'
   return (
     <main className="setup-shell">
@@ -44,6 +57,7 @@ export function FirstRun({ onFinish }: Props) {
         </div>
       </header>
       <div className="setup-body">
+        <SetupGuide step={step} settings={settings} cableFound={hasCable(state.devices)} finishing={finishing} />
         {step === 0 ? <CableStep settings={settings} /> : null}
         {step === 1 ? <TestStep /> : null}
         {step === 2 ? <RecordStep settings={settings} /> : null}
@@ -53,7 +67,12 @@ export function FirstRun({ onFinish }: Props) {
         <button type="button" className="button ghost" disabled={step === 0} onClick={() => setStep((value) => value - 1)}>
           <BackIcon /> Back
         </button>
-        <button type="button" className="button primary" onClick={() => (last ? finish() : setStep((value) => value + 1))}>
+        <button
+          type="button"
+          className="button primary"
+          disabled={finishing}
+          onClick={() => (last ? finish() : setStep((value) => value + 1))}
+        >
           {nextLabel}
         </button>
       </footer>
@@ -66,10 +85,6 @@ function CableStep({ settings }: { settings: Settings }) {
   const cable = state.devices.find((device) => device.direction === 'output' && device.virtualCable)
   return (
     <>
-      <div className="setup-intro">
-        <h1>Your virtual mic</h1>
-        <p>Ringpad plays clips into a virtual cable. Your game hears the other end of it as a microphone.</p>
-      </div>
       {cable?.virtualCable ? (
         <span className="found">
           <CheckIcon /> Found {CABLE_NAMES[cable.virtualCable] ?? 'a virtual cable'}
@@ -85,10 +100,6 @@ function TestStep() {
   const meters = useMeters()
   return (
     <>
-      <div className="setup-intro">
-        <h1>Test it</h1>
-        <p>Play a short tone into the virtual mic. The meter should move; teammates would hear the tone.</p>
-      </div>
       <div className="tone-test">
         <button type="button" className="button primary" onClick={() => void api.playTestTone()}>
           Play test tone
@@ -100,24 +111,12 @@ function TestStep() {
 }
 
 function RecordStep({ settings }: { settings: Settings }) {
-  return (
-    <>
-      <div className="setup-intro">
-        <h1>What to record</h1>
-        <p>Ringpad keeps the last {settings.historySeconds} s of this in memory, ready to clip. Nothing is saved until you clip.</p>
-      </div>
-      <SourcePicker settings={settings} />
-    </>
-  )
+  return <SourcePicker settings={settings} />
 }
 
 function KeysStep({ settings }: { settings: Settings }) {
   return (
     <>
-      <div className="setup-intro">
-        <h1>Your keys</h1>
-        <p>They work while you play, even with the game focused. Change any of them here or later in Settings.</p>
-      </div>
       <div className="hotkey-list">
         <HotkeyRow label="Clip" hint={`Grab the last ${settings.grabSeconds} s, preview it to you`} target={{ kind: 'main', key: 'grab' }} value={settings.hotkeys.grab} />
         <HotkeyRow label="Send" hint="Play the clip to everyone" target={{ kind: 'main', key: 'send' }} value={settings.hotkeys.send} />
@@ -127,6 +126,57 @@ function KeysStep({ settings }: { settings: Settings }) {
       </div>
     </>
   )
+}
+
+interface SetupGuideProps {
+  step: number
+  settings: Settings
+  cableFound: boolean
+  finishing: boolean
+}
+
+/** The panda and its speech bubble. Its own component so meter updates re-render only this. */
+function SetupGuide({ step, settings, cableFound, finishing }: SetupGuideProps) {
+  const meters = useMeters()
+  const intro = stepIntro(step, settings)
+  const mood = setupMood(step, { cableFound, finishing, toneOn: meters.outgoing > TALK_LEVEL })
+  return (
+    <div className="setup-guide">
+      <Panda mood={mood} level={meters.outgoing} size={80} />
+      <div className="bubble" key={step}>
+        <h1>{intro.title}</h1>
+        <p>{intro.body}</p>
+      </div>
+    </div>
+  )
+}
+
+/** Happy when things work, puzzled when the cable is missing, talking while the test tone plays. */
+export function setupMood(step: number, seen: { cableFound: boolean; finishing: boolean; toneOn: boolean }): PandaMood {
+  if (seen.finishing) return 'celebrate'
+  if (step === 0) return seen.cableFound ? 'happy' : 'confused'
+  if (step === 1) return seen.toneOn ? 'talking' : 'idle'
+  if (step === 2) return 'listening'
+  return 'happy'
+}
+
+function stepIntro(step: number, settings: Settings): { title: string; body: string } {
+  if (step === 0) {
+    return {
+      title: 'Your virtual mic',
+      body: 'Ringpad plays clips into a virtual cable. Your game hears the other end of it as a microphone.',
+    }
+  }
+  if (step === 1) {
+    return { title: 'Test it', body: 'Play a short tone into the virtual mic. The meter should move; teammates would hear the tone.' }
+  }
+  if (step === 2) {
+    return {
+      title: 'What to record',
+      body: `Ringpad keeps the last ${settings.historySeconds} s of this in memory, ready to clip. Nothing is saved until you clip.`,
+    }
+  }
+  return { title: 'Your keys', body: 'They work while you play, even with the game focused. Change any of them here or later in Settings.' }
 }
 
 function hasCable(devices: DeviceInfo[]): boolean {

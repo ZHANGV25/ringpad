@@ -1,7 +1,7 @@
 import type { EngineStatus } from '../../engine/types'
 import { IconButton } from '../../components/controls'
 import { GearIcon } from '../../components/icons'
-import { RingMark } from '../../components/RingMark'
+import { PandaMark } from '../../components/panda/PandaMark'
 
 interface TopBarProps {
   status: EngineStatus
@@ -13,7 +13,7 @@ export function TopBar({ status, onSettings }: TopBarProps) {
   return (
     <header className="topbar">
       <div className="brand">
-        <RingMark />
+        <PandaMark />
         <span className="title">Ringpad</span>
       </div>
       <div className="status-line" role="status">

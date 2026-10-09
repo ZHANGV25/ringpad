@@ -24,16 +24,8 @@
 }
 
 .mark {
-  width: 18px;
-  height: 18px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.6;
-}
-
-.mark .dot {
-  fill: currentColor;
-  stroke: none;
+  width: 20px;
+  height: 20px;
 }
 
 .status-line {
@@ -103,14 +95,34 @@
   border-color: var(--text);
 }
 
+/* The panda stands at the left; the clip's waveform reads like what it says. */
+.clip-stage {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+}
+
+.clip-panda {
+  flex: none;
+  margin: -2px 0 -3px -2px;
+  cursor: pointer;
+}
+
+.clip-stage .clip-wave {
+  flex: 1;
+  min-width: 0;
+}
+
 .clip-empty {
   display: flex;
   flex: 1;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   gap: 6px;
-  text-align: center;
+  align-self: stretch;
 }
 
 .clip-empty-title {
@@ -121,7 +133,6 @@
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
   gap: 5px;
   font-size: 12px;
 }

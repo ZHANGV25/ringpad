@@ -1,0 +1,332 @@
+/* Ringpad's panda (components/panda). Only transforms and opacity move, so it stays smooth. */
+
+.panda {
+  --p-white: #ffffff;
+  --p-black: #141414;
+  --p-ink: #141414;
+  --p-shade: #e7e7e7;
+  --p-tongue: #8a8a8a;
+  --p-shadow: rgba(0, 0, 0, 0.1);
+  --p-line: #c9c9c9;
+  display: block;
+  overflow: visible;
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .panda {
+    --p-white: #f2f2f2;
+    --p-black: #3b3b3b;
+    --p-ink: #0e0e0e;
+    --p-shade: #cfcfcf;
+    --p-tongue: #6b6b6b;
+    --p-shadow: rgba(255, 255, 255, 0.07);
+    --p-line: transparent;
+  }
+}
+
+:root[data-theme='dark'] .panda {
+  --p-white: #f2f2f2;
+  --p-black: #3b3b3b;
+  --p-ink: #0e0e0e;
+  --p-shade: #cfcfcf;
+  --p-tongue: #6b6b6b;
+  --p-shadow: rgba(255, 255, 255, 0.07);
+  --p-line: transparent;
+}
+
+/* Pivots for every moving part. */
+.panda .pd-root,
+.panda .pd-body,
+.panda .pd-head,
+.panda .pd-ear-l,
+.panda .pd-ear-r,
+.panda .pd-eye,
+.panda .pd-eyes-open,
+.panda .pd-eyes-happy,
+.panda .pd-eyes-closed,
+.panda .pd-pupil,
+.panda .pd-arm-l,
+.panda .pd-arm-r,
+.panda .pd-shadow,
+.panda .pd-mouth-open,
+.panda .pd-fx,
+.panda .pd-fx path,
+.panda .pd-fx text {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+.panda .pd-root,
+.panda .pd-body {
+  transform-origin: 50% 100%;
+}
+.panda .pd-head {
+  transform-origin: 50% 90%;
+}
+.panda .pd-ear-l {
+  transform-origin: 70% 80%;
+}
+.panda .pd-ear-r {
+  transform-origin: 30% 80%;
+}
+.panda .pd-arm-l {
+  transform-origin: 30% 12%;
+}
+.panda .pd-arm-r {
+  transform-origin: 70% 12%;
+}
+.panda .pd-mouth-open {
+  transform-origin: 50% 0%;
+}
+.panda .pd-look {
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+/* Expression layers: one face at a time, swapped while the blink in motion.ts has the eyes shut. */
+.panda .pd-eyes-open,
+.panda .pd-eyes-happy,
+.panda .pd-eyes-closed,
+.panda .pd-mouth-open,
+.panda .pd-mouth-closed,
+.panda .pd-brow {
+  transition: opacity 0s linear 80ms;
+}
+.panda .pd-fx {
+  transition: opacity 260ms ease;
+}
+.panda .pd-eyes-happy,
+.panda .pd-eyes-closed,
+.panda .pd-mouth-open,
+.panda .pd-brow,
+.panda .pd-fx {
+  opacity: 0;
+}
+.panda[data-mood='sleeping'] .pd-eyes-open,
+.panda[data-mood='sleeping'] .pd-mouth-closed,
+.panda[data-mood='happy'] .pd-eyes-open,
+.panda[data-mood='celebrate'] .pd-eyes-open,
+.panda[data-mood='talking'] .pd-mouth-closed,
+.panda[data-mood='celebrate'] .pd-mouth-closed {
+  opacity: 0;
+}
+.panda[data-mood='sleeping'] .pd-eyes-closed,
+.panda[data-mood='happy'] .pd-eyes-happy,
+.panda[data-mood='celebrate'] .pd-eyes-happy,
+.panda[data-mood='talking'] .pd-mouth-open,
+.panda[data-mood='celebrate'] .pd-mouth-open,
+.panda[data-mood='confused'] .pd-brow,
+.panda[data-mood='listening'] .pd-fx-listen,
+.panda[data-mood='talking'] .pd-fx-talk,
+.panda[data-mood='sleeping'] .pd-fx-sleep,
+.panda[data-mood='confused'] .pd-fx-ask,
+.panda[data-mood='celebrate'] .pd-fx-spark {
+  opacity: 1;
+}
+
+/* Always alive: breathing, blinking, an ear twitch and the odd glance. */
+.panda .pd-body {
+  animation: pd-breathe 3.4s ease-in-out infinite;
+}
+.panda .pd-head {
+  animation: pd-bob 3.4s ease-in-out infinite;
+}
+.panda .pd-shadow {
+  animation: pd-shadow 3.4s ease-in-out infinite;
+}
+.panda .pd-eyes-open .pd-eye {
+  animation: pd-blink 5.2s infinite;
+}
+.panda .pd-ear-r {
+  animation: pd-twitch 7.3s ease-in-out 1.2s infinite;
+}
+.panda .pd-pupil {
+  animation: pd-glance 9s ease-in-out infinite;
+}
+
+@keyframes pd-breathe {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(1.012, 1.028); }
+}
+@keyframes pd-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.6px); }
+}
+@keyframes pd-shadow {
+  0%, 100% { transform: scaleX(1); }
+  50% { transform: scaleX(0.985); }
+}
+@keyframes pd-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  94.5% { transform: scaleY(0.08); }
+  97% { transform: scaleY(1); }
+}
+@keyframes pd-twitch {
+  0%, 80%, 100% { transform: rotate(0); }
+  83% { transform: rotate(-11deg); }
+  86% { transform: rotate(4deg); }
+  89% { transform: rotate(0); }
+}
+@keyframes pd-glance {
+  0%, 22% { transform: translate(0, 0); }
+  27%, 45% { transform: translate(-2.2px, 0.4px); }
+  50%, 70% { transform: translate(0, 0); }
+  75%, 92% { transform: translate(2.2px, -0.6px); }
+  97%, 100% { transform: translate(0, 0); }
+}
+
+/* Listening: leans toward the sound while waves drift into its ear. */
+.panda[data-mood='listening'] .pd-head {
+  animation: pd-lean 4.8s ease-in-out infinite;
+}
+.panda[data-mood='listening'] .pd-fx-listen path {
+  animation: pd-wave-in 2.4s ease-out infinite;
+  transform-origin: 0% 50%;
+}
+.panda[data-mood='listening'] .pd-fx-listen path:nth-child(2) {
+  animation-delay: 0.8s;
+}
+.panda[data-mood='listening'] .pd-fx-listen path:nth-child(3) {
+  animation-delay: 1.6s;
+}
+@keyframes pd-lean {
+  0%, 100% { transform: rotate(0) translateY(0); }
+  40%, 60% { transform: rotate(5deg) translateY(-1px); }
+}
+@keyframes pd-wave-in {
+  0% { opacity: 0; transform: translateX(14px) scale(1.15); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-4px) scale(0.8); }
+}
+
+/* Talking: the head and mouth follow the level from script; waves stream out. */
+.panda[data-mood='talking'] .pd-head {
+  animation: none;
+}
+.panda[data-mood='talking'] .pd-fx-talk path {
+  animation: pd-wave-out 1.1s ease-out infinite;
+  transform-origin: 0% 50%;
+}
+.panda[data-mood='talking'] .pd-fx-talk path:nth-child(2) {
+  animation-delay: 0.35s;
+}
+.panda[data-mood='talking'] .pd-fx-talk path:nth-child(3) {
+  animation-delay: 0.7s;
+}
+@keyframes pd-wave-out {
+  0% { opacity: 0; transform: translateX(-6px) scale(0.8); }
+  25% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(12px) scale(1.2); }
+}
+
+/* Sleeping: slower breath, a drooping head and floating z's. */
+.panda[data-mood='sleeping'] .pd-body {
+  animation-duration: 4.6s;
+}
+.panda[data-mood='sleeping'] .pd-head {
+  animation: pd-doze 4.6s ease-in-out infinite;
+}
+.panda[data-mood='sleeping'] .pd-ear-r,
+.panda[data-mood='sleeping'] .pd-pupil {
+  animation: none;
+}
+.panda[data-mood='sleeping'] .pd-fx-sleep text {
+  opacity: 0;
+  animation: pd-z 3.6s ease-out infinite;
+}
+.panda[data-mood='sleeping'] .pd-fx-sleep text:nth-child(2) {
+  animation-delay: 1.2s;
+}
+.panda[data-mood='sleeping'] .pd-fx-sleep text:nth-child(3) {
+  animation-delay: 2.4s;
+}
+@keyframes pd-doze {
+  0%, 100% { transform: rotate(3deg) translateY(3px); }
+  50% { transform: rotate(4.5deg) translateY(4.5px); }
+}
+@keyframes pd-z {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.6); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate(14px, -30px) scale(1.15); }
+}
+
+/* Confused: a tilted head, one raised brow and a bobbing question mark. */
+.panda[data-mood='confused'] .pd-head {
+  animation: pd-puzzle 3s ease-in-out infinite;
+}
+.panda[data-mood='confused'] .pd-fx-ask {
+  animation: pd-ask 1.6s ease-in-out infinite;
+}
+@keyframes pd-puzzle {
+  0%, 100% { transform: rotate(-8deg); }
+  50% { transform: rotate(-10deg) translateY(-1px); }
+}
+@keyframes pd-ask {
+  0%, 100% { transform: translateY(0) rotate(-6deg); }
+  50% { transform: translateY(-4px) rotate(6deg); }
+}
+
+/* Happy: a gentle sway. */
+.panda[data-mood='happy'] .pd-root {
+  animation: pd-sway 2.6s ease-in-out infinite;
+}
+@keyframes pd-sway {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(2deg); }
+}
+
+/* Celebrate: hops with squash and stretch, arms up, sparkles. */
+.panda[data-mood='celebrate'] .pd-root {
+  animation: pd-hop 1.1s cubic-bezier(0.3, 0.7, 0.4, 1) infinite;
+}
+.panda[data-mood='celebrate'] .pd-shadow {
+  animation: pd-hop-shadow 1.1s cubic-bezier(0.3, 0.7, 0.4, 1) infinite;
+}
+.panda[data-mood='celebrate'] .pd-arm-l {
+  animation: pd-cheer-l 1.1s ease-in-out infinite;
+}
+.panda[data-mood='celebrate'] .pd-arm-r {
+  animation: pd-cheer-r 1.1s ease-in-out infinite;
+}
+.panda[data-mood='celebrate'] .pd-fx-spark path {
+  animation: pd-spark 1.1s ease-out infinite;
+}
+.panda[data-mood='celebrate'] .pd-fx-spark path:nth-child(2) {
+  animation-delay: 0.3s;
+}
+.panda[data-mood='celebrate'] .pd-fx-spark path:nth-child(3) {
+  animation-delay: 0.6s;
+}
+@keyframes pd-hop {
+  0% { transform: translateY(0) scale(1, 1); }
+  14% { transform: translateY(0) scale(1.07, 0.9); }
+  40% { transform: translateY(-22px) scale(0.95, 1.07); }
+  62% { transform: translateY(-24px) scale(1, 1); }
+  84% { transform: translateY(0) scale(1.06, 0.93); }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+@keyframes pd-hop-shadow {
+  0%, 14%, 84%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.72); opacity: 0.5; }
+}
+@keyframes pd-cheer-l {
+  0%, 100% { transform: rotate(0); }
+  40%, 62% { transform: rotate(150deg); }
+}
+@keyframes pd-cheer-r {
+  0%, 100% { transform: rotate(0); }
+  40%, 62% { transform: rotate(-150deg); }
+}
+@keyframes pd-spark {
+  0% { opacity: 0; transform: scale(0.3); }
+  40% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.3); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panda *,
+  .panda .pd-look {
+    animation: none !important;
+    transition: none !important;
+  }
+}

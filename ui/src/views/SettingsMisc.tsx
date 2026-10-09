@@ -2,7 +2,7 @@ import { THEME_PREFERENCES, applyTheme, type ThemePreference } from '../theme'
 import type { PadInfo, Settings, SettingsPatch } from '../engine/types'
 import { IconButton, KeyChip, Segmented, Slider, Toggle } from '../components/controls'
 import { ExternalLinkIcon, TrashIcon } from '../components/icons'
-import { RingMark } from '../components/RingMark'
+import { Panda } from '../components/panda/Panda'
 import { useEngine } from '../state/EngineProvider'
 
 const THEME_LABELS: Record<ThemePreference, string> = { system: 'System', light: 'Light', dark: 'Dark' }
@@ -113,7 +113,7 @@ export function AboutTab() {
   return (
     <section className="group about-panel">
       <div className="about-head">
-        <RingMark />
+        <Panda mood="happy" size={58} label="Ringpad's panda" />
         <div>
           <h1>Ringpad</h1>
           <span className="muted small numeric">

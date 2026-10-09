@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { IconButton, KeyChip, Segmented, Sheet, Slider, Toggle } from './controls'
-import { RingMark } from './RingMark'
+import { PandaMark } from './panda/PandaMark'
 
 describe('controls', () => {
   it('Segmented moves with arrows and wraps around', () => {
@@ -47,7 +47,7 @@ describe('controls', () => {
     const onClick = vi.fn()
     render(
       <IconButton label="Mute" pressed onClick={onClick}>
-        <RingMark />
+        <PandaMark />
       </IconButton>,
     )
     const button = screen.getByRole('button', { name: 'Mute' })
