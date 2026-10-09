@@ -17,9 +17,10 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    setupFiles: ['src/test/setup.ts'],
     coverage: {
       include: ['src/**'],
-      exclude: ['src/main.tsx', 'src/**/*.test.*'],
+      exclude: ['src/main.tsx', 'src/**/*.test.*', 'src/test/**'],
       thresholds: { lines: 80, functions: 80, branches: 80, statements: 80 },
     },
   },

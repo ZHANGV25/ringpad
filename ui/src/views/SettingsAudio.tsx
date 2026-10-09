@@ -1,0 +1,191 @@
+import { useCallback, useEffect, useState } from 'react'
+import type { AudioApp, Settings, SettingsPatch } from '../engine/types'
+import { IconButton, Slider, Toggle } from '../components/controls'
+import { ExternalLinkIcon, RefreshIcon } from '../components/icons'
+import { Meter } from '../components/Meter'
+import { useEngine, useMeters } from '../state/EngineProvider'
+
+const VB_CABLE_URL = 'https://vb-audio.com/Cable/'
+
+interface TabProps {
+  settings: Settings
+}
+
+export function AudioTab({ settings }: TabProps) {
+  const { api, state } = useEngine()
+  const meters = useMeters()
+  const update = (patch: SettingsPatch) => void api.updateSettings({ patch })
+  const outputs = state.devices.filter((device) => device.direction === 'output' && !device.virtualCable)
+  const inputs = state.devices.filter((device) => device.direction === 'input' && !device.virtualCable)
+  return (
+    <>
+      <section className="group">
+        <span className="label">Record from</span>
+        <SourcePicker settings={settings} />
+      </section>
+      <section className="group">
+        <span className="label">Virtual mic</span>
+        <VirtualMicPicker settings={settings} />
+      </section>
+      <section className="group">
+        <span className="label">Your headphones</span>
+        <select
+          aria-label="Headphones"
+          value={settings.headphones ?? ''}
+          onChange={(event) => update({ headphones: event.currentTarget.value || null })}
+        >
+          <option value="">Off (no preview)</option>
+          {outputs.map((device) => (
+            <option key={device.id} value={device.id}>
+              {device.name}
+            </option>
+          ))}
+        </select>
+        <Slider label="You hear" value={settings.monitorVolume} min={0} max={1} step={0.01} percent onChange={(monitorVolume) => update({ monitorVolume })} />
+      </section>
+      <section className="group">
+        <span className="label">Your mic</span>
+        <Toggle checked={settings.micEnabled} label="Pass my mic through" hint="Teammates hear you and the clips on one mic." onChange={(micEnabled) => update({ micEnabled })} />
+        <select
+          aria-label="Mic device"
+          disabled={!settings.micEnabled}
+          value={settings.mic ?? ''}
+          onChange={(event) => update({ mic: event.currentTarget.value || null })}
+        >
+          <option value="">Default mic</option>
+          {inputs.map((device) => (
+            <option key={device.id} value={device.id}>
+              {device.name}
+            </option>
+          ))}
+        </select>
+        <Toggle checked={settings.ducking} label="Lower my mic while sending" hint="Stops your mic picking the clip up from your headphones." onChange={(ducking) => update({ ducking })} />
+      </section>
+      <section className="group">
+        <span className="label">Levels and length</span>
+        <Slider label="Others hear" value={settings.sendVolume} min={0} max={1} step={0.01} percent onChange={(sendVolume) => update({ sendVolume })} />
+        <Slider label="Keep the last" value={settings.historySeconds} min={10} max={120} step={5} suffix=" s" onChange={(historySeconds) => update({ historySeconds })} />
+        <Slider label="Clip length" value={settings.grabSeconds} min={1} max={30} step={1} suffix=" s" onChange={(grabSeconds) => update({ grabSeconds })} />
+      </section>
+      <section className="group">
+        <span className="label">Test</span>
+        <div className="inline-control">
+          <button type="button" className="button small" onClick={() => void api.playTestTone()}>
+            Play test tone
+          </button>
+        </div>
+        <Meter label="Out" value={meters.outgoing} />
+      </section>
+    </>
+  )
+}
+
+/** Choose what Ringpad records: the default output, one output device, or one app. */
+export function SourcePicker({ settings }: TabProps) {
+  const { api, state } = useEngine()
+  const [apps, setApps] = useState<AudioApp[]>([])
+  const loadApps = useCallback(() => {
+    void api.listAudioApps().then((items) => setApps(sortApps(items)))
+  }, [api])
+  useEffect(loadApps, [loadApps])
+  const outputs = state.devices.filter((device) => device.direction === 'output' && !device.virtualCable)
+  const listed = withSavedApp(apps, settings.source)
+  return (
+    <>
+      <div className="inline-control">
+        <select
+          aria-label="Record from"
+          value={sourceToValue(settings.source)}
+          onChange={(event) => void api.updateSettings({ patch: { source: valueToSource(event.currentTarget.value, listed) } })}
+        >
+          <option value="default">What I hear (default output)</option>
+          <optgroup label="One app only">
+            {listed.map((app) => (
+              <option key={app.exe} value={`app:${app.exe}`}>
+                {app.active ? '● ' : ''}
+                {app.name}
+                {app.pid === 0 ? ' (not running)' : ''}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label="An output device">
+            {outputs.map((device) => (
+              <option key={device.id} value={`device:${device.id}`}>
+                {device.name}
+              </option>
+            ))}
+          </optgroup>
+        </select>
+        <IconButton label="Refresh apps" onClick={loadApps}>
+          <RefreshIcon />
+        </IconButton>
+      </div>
+      <span className="hint">For the cleanest clips, pick the app your teammates talk in. Apps playing sound now have a ●.</span>
+    </>
+  )
+}
+
+/** Choose the virtual cable clips are sent through, or explain how to get one. */
+export function VirtualMicPicker({ settings }: TabProps) {
+  const { api, state } = useEngine()
+  const cables = state.devices.filter((device) => device.direction === 'output' && device.virtualCable)
+  if (cables.length === 0) {
+    return (
+      <div className="callout">
+        <strong>No virtual cable found</strong>
+        <span className="hint">
+          Windows only lets an app add a microphone through a virtual cable. VB-CABLE is free and takes a minute to install.
+        </span>
+        <div className="row-actions">
+          <button type="button" className="button small primary" onClick={() => void api.openExternal({ url: VB_CABLE_URL })}>
+            <ExternalLinkIcon /> Get VB-CABLE (free)
+          </button>
+          <button type="button" className="button small" onClick={() => void api.listDevices()}>
+            Check again
+          </button>
+        </div>
+      </div>
+    )
+  }
+  return (
+    <>
+      <select
+        aria-label="Virtual mic"
+        value={settings.virtualOutput ?? ''}
+        onChange={(event) => void api.updateSettings({ patch: { virtualOutput: event.currentTarget.value || null } })}
+      >
+        {cables.map((device) => (
+          <option key={device.id} value={device.id}>
+            {device.name}
+          </option>
+        ))}
+      </select>
+      <span className="hint">
+        In your game or Discord, choose <strong>{state.virtualCaptureHint ?? 'the cable output'}</strong> as your microphone.
+      </span>
+    </>
+  )
+}
+
+function withSavedApp(apps: AudioApp[], source: Settings['source']): AudioApp[] {
+  if (source.kind !== 'app' || apps.some((app) => app.exe === source.exe)) return apps
+  return [...apps, { pid: 0, exe: source.exe, name: source.name, active: false, peak: 0 }]
+}
+
+export function sourceToValue(source: Settings['source']): string {
+  if (source.kind === 'default') return 'default'
+  if (source.kind === 'device') return `device:${source.id}`
+  return `app:${source.exe}`
+}
+
+export function valueToSource(value: string, apps: AudioApp[]): Settings['source'] {
+  if (value === 'default') return { kind: 'default' }
+  if (value.startsWith('device:')) return { kind: 'device', id: value.slice('device:'.length) }
+  const exe = value.slice('app:'.length)
+  const app = apps.find((item) => item.exe === exe)
+  return { kind: 'app', exe, name: app?.name ?? exe }
+}
+
+function sortApps(apps: AudioApp[]): AudioApp[] {
+  return [...apps].sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name))
+}

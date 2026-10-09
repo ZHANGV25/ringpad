@@ -1,0 +1,162 @@
+/* Pads: a 2 x 4 grid that takes the space left in the window. */
+.pads-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  gap: 8px;
+  min-height: 0;
+}
+
+.pad-tile {
+  position: relative;
+  min-height: 0;
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
+  transition: background var(--dur), border-color var(--dur), color var(--dur);
+}
+
+.pad-tile.empty-pad {
+  border-style: dashed;
+  border-color: var(--line-strong);
+}
+
+.pad-tile.filled:hover {
+  border-color: var(--line-strong);
+  background: var(--surface);
+}
+
+.pad-tile.active,
+.pad-tile.drop-target {
+  border-color: var(--fill);
+  border-style: solid;
+  background: var(--fill);
+  color: var(--on-fill);
+}
+
+.pad-play {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.empty-pad .pad-play {
+  cursor: default;
+}
+
+.pad-top,
+.pad-bottom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pad-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty-pad .pad-name {
+  color: var(--text-faint);
+  font-weight: 400;
+}
+
+.pad-wave {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  height: 16px;
+  color: currentColor;
+}
+
+.pad-length {
+  flex: none;
+  padding-right: 22px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pad-tile.active .pad-length,
+.pad-tile.active .key-chip,
+.pad-tile.drop-target .pad-name,
+.pad-tile.drop-target .key-chip {
+  border-color: var(--on-fill);
+  color: var(--on-fill);
+}
+
+.pad-more {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 24px;
+  height: 24px;
+  opacity: 0.55;
+}
+
+.pad-tile:hover .pad-more,
+.pad-more:focus-visible {
+  opacity: 1;
+}
+
+.pad-tile.active .pad-more {
+  color: var(--on-fill);
+}
+
+.pad-more svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Choosing a pad to save into. */
+.pad-picker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.pad-picker button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 10px;
+  border: var(--hairline) solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pad-picker button:hover {
+  background: var(--surface);
+}
+
+.pad-picker .slot-number {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pad-picker .slot-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

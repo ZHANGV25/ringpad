@@ -1,40 +1,56 @@
-import { useEffect, useState } from 'react'
-import { THEME_PREFERENCES, applyTheme, type ThemePreference } from './theme'
+import { useState } from 'react'
+import type { EngineApi } from './engine/api'
+import { EngineProvider, useEngine } from './state/EngineProvider'
+import { FirstRun } from './views/FirstRun'
+import { MainWindow } from './views/MainWindow'
+import { SettingsPage } from './views/SettingsPage'
 
-const THEME_LABELS: Record<ThemePreference, string> = {
-  system: 'System',
-  light: 'Light',
-  dark: 'Dark',
+interface Props {
+  api?: EngineApi
 }
 
-export function App() {
-  const [theme, setTheme] = useState<ThemePreference>('system')
-
-  useEffect(() => {
-    applyTheme(theme)
-  }, [theme])
-
+export function App({ api }: Props) {
   return (
-    <main className="shell">
-      <header className="topbar">
-        <span className="title">Ringpad</span>
-        <span className="muted">Engine not connected yet</span>
-      </header>
-
-      <section className="empty" aria-label="Pads">
-        <p className="muted">Pads and the live buffer will show here.</p>
-      </section>
-
-      <footer className="topbar">
-        <span className="muted">Theme</span>
-        <div className="segmented" role="group" aria-label="Theme">
-          {THEME_PREFERENCES.map((option) => (
-            <button key={option} type="button" aria-pressed={theme === option} onClick={() => setTheme(option)}>
-              {THEME_LABELS[option]}
-            </button>
-          ))}
-        </div>
-      </footer>
-    </main>
+    <EngineProvider api={api}>
+      <AppShell />
+    </EngineProvider>
   )
+}
+
+function AppShell() {
+  const { state } = useEngine()
+  const [view, setView] = useState<'main' | 'settings'>('main')
+  return (
+    <>
+      <AppView view={view} setView={setView} />
+      {state.notice ? (
+        <div className="notice" role="alert">
+          {state.notice.message}
+        </div>
+      ) : null}
+    </>
+  )
+}
+
+interface AppViewProps {
+  view: 'main' | 'settings'
+  setView: (view: 'main' | 'settings') => void
+}
+
+function AppView({ view, setView }: AppViewProps) {
+  const { state } = useEngine()
+  if (!state.loaded || !state.settings) {
+    return (
+      <main className="shell">
+        <p className="muted">Starting</p>
+      </main>
+    )
+  }
+  if (!state.settings.firstRunDone) {
+    return <FirstRun onFinish={() => setView('main')} />
+  }
+  if (view === 'settings') {
+    return <SettingsPage onBack={() => setView('main')} />
+  }
+  return <MainWindow onSettings={() => setView('settings')} />
 }

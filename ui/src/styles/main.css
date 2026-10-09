@@ -1,0 +1,191 @@
+/* Main window: top bar, live strip, current clip, pads, footer. Fits 380 x 680 without scrolling. */
+.main-shell {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  gap: var(--gap);
+  height: 100%;
+  padding: 10px var(--pad) 12px;
+  overflow: hidden;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 32px;
+}
+
+.brand {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 7px;
+}
+
+.mark {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+}
+
+.mark .dot {
+  fill: currentColor;
+  stroke: none;
+}
+
+.status-line {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.status-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border: 1.5px solid var(--text-muted);
+  border-radius: 50%;
+}
+
+.status-dot.on {
+  border-color: var(--text);
+  background: var(--text);
+}
+
+/* Live strip. */
+.live-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.live-canvas {
+  display: block;
+  width: 100%;
+  height: 38px;
+  color: var(--text);
+}
+
+.live-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+
+/* Current clip. */
+.clip-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 108px;
+  padding: 10px 12px;
+  transition: border-color var(--dur);
+}
+
+.clip-card.sending {
+  border-color: var(--text);
+}
+
+.clip-empty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.clip-empty-title {
+  font-weight: 600;
+}
+
+.clip-empty .muted {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 12px;
+}
+
+.clip-wave {
+  display: block;
+  width: 100%;
+  height: 44px;
+  color: var(--text);
+}
+
+.clip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.clip-length {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.clip-length strong {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.save-armed {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 -12px -10px;
+  padding: 7px 12px;
+  border-radius: 0 0 calc(var(--radius) - 1px) calc(var(--radius) - 1px);
+  background: var(--fill);
+  color: var(--on-fill);
+  font-size: 12px;
+}
+
+.save-armed .link-button {
+  color: var(--on-fill);
+}
+
+/* Footer: three meters, then what others hear. */
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: var(--hairline) solid var(--line);
+}
+
+.meters {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.footer .slider-row {
+  grid-template-columns: auto 1fr 36px;
+  min-height: 22px;
+  font-size: 12px;
+}
