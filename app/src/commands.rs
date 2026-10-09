@@ -6,7 +6,7 @@ use ringpad_core::keys::is_valid_key_name;
 use serde_json::Value;
 use std::path::PathBuf;
 use std::sync::atomic::Ordering;
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 use tauri_plugin_opener::OpenerExt as _;
 
 use crate::command_support::{
@@ -20,7 +20,8 @@ use crate::runtime::AppState;
 use crate::settings;
 
 pub(crate) use crate::command_support::{
-    emit_error, emit_pads, emit_playback, now_seconds, playback_from_session, save_pad_metadata,
+    emit_error, emit_pads, emit_playback, emit_talk, now_seconds, playback_from_session,
+    save_pad_metadata,
 };
 
 /// Returns a complete UI snapshot.
@@ -40,6 +41,7 @@ pub async fn get_snapshot(state: State<'_, AppState>) -> Result<Snapshot, String
             playback_from_session(&session),
         )
     };
+    let talk = state.talk.lock().map_err(lock_error)?.snapshot();
     Ok(Snapshot {
         version: env!("CARGO_PKG_VERSION"),
         backend: ringpad_windows::backend_name(),
@@ -50,6 +52,7 @@ pub async fn get_snapshot(state: State<'_, AppState>) -> Result<Snapshot, String
         pads,
         playback,
         virtual_capture_hint,
+        talk,
     })
 }
 
@@ -89,11 +92,16 @@ pub async fn update_settings(
         let mut current = state.settings.lock().map_err(lock_error)?;
         let previous = current.clone();
         let next = settings::apply_patch(&current, patch).map_err(string_error)?;
+        let pads = state.pads_store.lock().map_err(lock_error)?.clone();
+        validate_talk_pad_conflicts(&next, &pads)?;
         settings::save(&state.paths.settings_json, &next).map_err(string_error)?;
         *current = next.clone();
         (previous, next)
     };
     apply_live_settings(&state, &previous, &next);
+    if let Some(talk) = state.talk.lock().map_err(lock_error)?.apply_settings(&next) {
+        emit_talk(&app, state.inner(), talk);
+    }
     apply_autostart(&app, &previous, &next)?;
     if needs_audio_restart(&previous, &next) {
         let pads = state.pads_store.lock().map_err(lock_error)?.clone();
@@ -153,6 +161,17 @@ pub async fn preview_clip(app: AppHandle, state: State<'_, AppState>) -> Result<
 /// Sends the current clip.
 #[tauri::command]
 pub async fn send_clip(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
+    {
+        let session = state.runtime.session.lock().map_err(lock_error)?;
+        if session.handle.current_send_clip().is_empty() {
+            return Err("No clip yet".to_string());
+        }
+    }
+    let wait = before_clip(&app, state.inner())?;
+    if !wait.is_zero() {
+        delayed_send(app, state.inner(), wait);
+        return Ok(());
+    }
     let event = {
         let mut session = state.runtime.session.lock().map_err(lock_error)?;
         actions::send_last(&mut session).map_err(string_error)?
@@ -174,6 +193,9 @@ pub async fn stop_all(app: AppHandle, state: State<'_, AppState>) -> Result<(), 
         let mut session = state.runtime.session.lock().map_err(lock_error)?;
         actions::stop_all(&mut session).map_err(string_error)?;
         let _ = session.arm.consume(now_seconds());
+    }
+    if let Some(talk) = state.talk.lock().map_err(lock_error)?.stop() {
+        emit_talk(&app, state.inner(), talk);
     }
     emit_playback(&app, &state);
     Ok(())
@@ -210,6 +232,17 @@ pub async fn play_pad(
     slot: usize,
 ) -> Result<(), String> {
     let one = slot_one_based(slot)?;
+    {
+        let session = state.runtime.session.lock().map_err(lock_error)?;
+        if session.pads.get(one).map_err(string_error)?.is_none() {
+            return Err(format!("Pad {one} is empty"));
+        }
+    }
+    let wait = before_clip(&app, state.inner())?;
+    if !wait.is_zero() {
+        delayed_pad(app, state.inner(), one, wait);
+        return Ok(());
+    }
     let event = {
         let mut session = state.runtime.session.lock().map_err(lock_error)?;
         actions::play_pad(&mut session, one).map_err(string_error)?
@@ -302,6 +335,19 @@ pub async fn set_pad_hotkey(
         if !is_valid_key_name(key) {
             return Err(format!("Invalid key: {key}"));
         }
+        let settings = state.settings.lock().map_err(lock_error)?;
+        if settings
+            .hotkeys
+            .talk
+            .as_deref()
+            .is_some_and(|talk| talk.eq_ignore_ascii_case(key))
+            || settings
+                .game_talk_keys
+                .iter()
+                .any(|talk| talk.eq_ignore_ascii_case(key))
+        {
+            return Err(format!("Pad hotkey {key} conflicts with talk keys"));
+        }
     }
     {
         let mut session = state.runtime.session.lock().map_err(lock_error)?;
@@ -366,6 +412,36 @@ pub async fn play_test_tone(app: AppHandle, state: State<'_, AppState>) -> Resul
     Ok(())
 }
 
+/// Tests game talk-key pressing for two seconds.
+#[tauri::command]
+pub async fn test_talk_keys(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
+    let talk = state
+        .talk
+        .lock()
+        .map_err(lock_error)?
+        .start_test(now_seconds())?;
+    if let Some(talk) = talk {
+        emit_talk(&app, state.inner(), talk);
+    }
+    let release_app = app.clone();
+    std::thread::Builder::new()
+        .name("ringpad-talk-test".to_string())
+        .spawn(move || {
+            std::thread::sleep(std::time::Duration::from_secs(2));
+            let state = release_app.state::<AppState>();
+            let talk = state
+                .talk
+                .lock()
+                .ok()
+                .and_then(|mut talk| talk.finish_test());
+            if let Some(talk) = talk {
+                emit_talk(&release_app, state.inner(), talk);
+            }
+        })
+        .map_err(string_error)?;
+    Ok(())
+}
+
 /// Opens an external HTTPS URL.
 #[tauri::command]
 pub async fn open_external(app: AppHandle, url: String) -> Result<(), String> {
@@ -386,4 +462,81 @@ pub async fn open_clips_folder(app: AppHandle, state: State<'_, AppState>) -> Re
             None::<&str>,
         )
         .map_err(string_error)
+}
+
+fn before_clip(app: &AppHandle, state: &AppState) -> Result<std::time::Duration, String> {
+    let (wait, talk) = state
+        .talk
+        .lock()
+        .map_err(lock_error)?
+        .before_clip(now_seconds());
+    if let Some(talk) = talk {
+        emit_talk(app, state, talk);
+    }
+    Ok(wait)
+}
+
+fn validate_talk_pad_conflicts(
+    settings: &settings::Settings,
+    pads: &crate::pads_store::PadsStore,
+) -> Result<(), String> {
+    for pad in &pads.pads {
+        let Some(hotkey) = pad.hotkey.as_deref() else {
+            continue;
+        };
+        if settings
+            .hotkeys
+            .talk
+            .as_deref()
+            .is_some_and(|talk| talk.eq_ignore_ascii_case(hotkey))
+        {
+            return Err(format!("Talk key {hotkey} conflicts with a pad hotkey"));
+        }
+        if settings
+            .game_talk_keys
+            .iter()
+            .any(|key| key.eq_ignore_ascii_case(hotkey))
+        {
+            return Err(format!(
+                "Game talk key {hotkey} conflicts with a pad hotkey"
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn delayed_send(app: AppHandle, state: &AppState, wait: std::time::Duration) {
+    let session = state.runtime.session.clone();
+    let _ = std::thread::Builder::new()
+        .name("ringpad-talk-send".to_string())
+        .spawn(move || {
+            std::thread::sleep(wait);
+            let result = session.lock().map_err(lock_error).and_then(|mut session| {
+                actions::send_last(&mut session).map_err(string_error)?;
+                Ok(())
+            });
+            if let Err(error) = result {
+                emit_error(&app, error);
+            }
+            let state = app.state::<AppState>();
+            emit_playback(&app, state.inner());
+        });
+}
+
+fn delayed_pad(app: AppHandle, state: &AppState, slot: usize, wait: std::time::Duration) {
+    let session = state.runtime.session.clone();
+    let _ = std::thread::Builder::new()
+        .name("ringpad-talk-pad".to_string())
+        .spawn(move || {
+            std::thread::sleep(wait);
+            let result = session.lock().map_err(lock_error).and_then(|mut session| {
+                actions::play_pad(&mut session, slot).map_err(string_error)?;
+                Ok(())
+            });
+            if let Err(error) = result {
+                emit_error(&app, error);
+            }
+            let state = app.state::<AppState>();
+            emit_playback(&app, state.inner());
+        });
 }

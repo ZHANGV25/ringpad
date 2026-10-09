@@ -6,6 +6,7 @@ use std::thread;
 
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::command_support::emit_talk;
 use crate::command_support::KeyCapturedPayload;
 use crate::commands;
 use crate::runtime::AppState;
@@ -68,12 +69,19 @@ pub fn key_action(
 
 fn hotkey_loop(app: AppHandle, rx: mpsc::Receiver<ringpad_windows::HotkeyEvent>) {
     while let Ok(event) = rx.recv() {
-        if !event.down {
+        let state = app.state::<AppState>();
+        if event.injected
+            && state
+                .talk
+                .lock()
+                .is_ok_and(|talk| talk.recently_sent(&event.key))
+        {
             continue;
         }
-        let state = app.state::<AppState>();
-        if state.key_capture.swap(false, Ordering::AcqRel) {
-            let _ = app.emit("key-captured", KeyCapturedPayload { key: event.key });
+        if state.key_capture.load(Ordering::Acquire) {
+            if event.down && state.key_capture.swap(false, Ordering::AcqRel) {
+                let _ = app.emit("key-captured", KeyCapturedPayload { key: event.key });
+            }
             continue;
         }
         let settings = match state.settings.lock() {
@@ -83,6 +91,20 @@ fn hotkey_loop(app: AppHandle, rx: mpsc::Receiver<ringpad_windows::HotkeyEvent>)
                 continue;
             }
         };
+        if matches_key(settings.hotkeys.talk.as_deref(), &event.key) {
+            match state.talk.lock() {
+                Ok(mut talk) => {
+                    if let Some(talk) = talk.on_talk_key(event.down) {
+                        emit_talk(&app, state.inner(), talk);
+                    }
+                }
+                Err(error) => commands::emit_error(&app, error.to_string()),
+            }
+            continue;
+        }
+        if !event.down {
+            continue;
+        }
         let pad_hotkeys = match state.pads_store.lock() {
             Ok(store) => store
                 .pads
@@ -103,8 +125,8 @@ fn hotkey_loop(app: AppHandle, rx: mpsc::Receiver<ringpad_windows::HotkeyEvent>)
 fn handle_action(app: &AppHandle, state: &AppState, action: Action) {
     let result = match action {
         Action::Grab => handle_grab(app, state),
-        Action::Send => handle_send(state),
-        Action::Stop => handle_stop(state),
+        Action::Send => handle_send(app, state),
+        Action::Stop => handle_stop(app, state),
         Action::Save => handle_save(state),
         Action::Pad(slot) => handle_pad(app, state, slot),
     };
@@ -148,7 +170,21 @@ fn handle_grab(app: &AppHandle, state: &AppState) -> Result<(), String> {
     }
 }
 
-fn handle_send(state: &AppState) -> Result<(), String> {
+fn handle_send(app: &AppHandle, state: &AppState) -> Result<(), String> {
+    {
+        let session = state
+            .runtime
+            .session
+            .lock()
+            .map_err(|error| error.to_string())?;
+        if session.handle.current_send_clip().is_empty() {
+            return Err("No clip yet".to_string());
+        }
+    }
+    if let Some(wait) = before_clip(app, state)? {
+        delayed_send(app, state, wait);
+        return Ok(());
+    }
     let mut session = state
         .runtime
         .session
@@ -160,7 +196,7 @@ fn handle_send(state: &AppState) -> Result<(), String> {
     }
 }
 
-fn handle_stop(state: &AppState) -> Result<(), String> {
+fn handle_stop(app: &AppHandle, state: &AppState) -> Result<(), String> {
     let mut session = state
         .runtime
         .session
@@ -168,6 +204,12 @@ fn handle_stop(state: &AppState) -> Result<(), String> {
         .map_err(|error| error.to_string())?;
     ringpad_core::actions::stop_all(&mut session).map_err(|error| error.to_string())?;
     let _ = session.arm.consume(commands::now_seconds());
+    drop(session);
+    if let Ok(mut talk) = state.talk.lock() {
+        if let Some(talk) = talk.stop() {
+            emit_talk(app, state, talk);
+        }
+    }
     Ok(())
 }
 
@@ -182,6 +224,20 @@ fn handle_save(state: &AppState) -> Result<(), String> {
 }
 
 fn handle_pad(app: &AppHandle, state: &AppState, slot: usize) -> Result<(), String> {
+    let save_armed = {
+        let session = state
+            .runtime
+            .session
+            .lock()
+            .map_err(|error| error.to_string())?;
+        session.arm.is_armed(commands::now_seconds())
+    };
+    if !save_armed {
+        if let Some(wait) = before_clip(app, state)? {
+            delayed_pad(app, state, slot, wait);
+            return Ok(());
+        }
+    }
     let event = {
         let mut session = state
             .runtime
@@ -212,6 +268,66 @@ fn handle_pad(app: &AppHandle, state: &AppState, slot: usize) -> Result<(), Stri
         }
         _ => Ok(()),
     }
+}
+
+fn before_clip(app: &AppHandle, state: &AppState) -> Result<Option<std::time::Duration>, String> {
+    let (wait, talk) = state
+        .talk
+        .lock()
+        .map_err(|error| error.to_string())?
+        .before_clip(commands::now_seconds());
+    if let Some(talk) = talk {
+        emit_talk(app, state, talk);
+    }
+    Ok((!wait.is_zero()).then_some(wait))
+}
+
+fn delayed_send(app: &AppHandle, state: &AppState, wait: std::time::Duration) {
+    let session = state.runtime.session.clone();
+    let app = app.clone();
+    let _ = std::thread::Builder::new()
+        .name("ringpad-hotkey-send".to_string())
+        .spawn(move || {
+            std::thread::sleep(wait);
+            let result =
+                session
+                    .lock()
+                    .map_err(|error| error.to_string())
+                    .and_then(|mut session| {
+                        ringpad_core::actions::send_last(&mut session)
+                            .map_err(|error| error.to_string())?;
+                        Ok(())
+                    });
+            if let Err(error) = result {
+                commands::emit_error(&app, error);
+            }
+            let state = app.state::<AppState>();
+            commands::emit_playback(&app, state.inner());
+        });
+}
+
+fn delayed_pad(app: &AppHandle, state: &AppState, slot: usize, wait: std::time::Duration) {
+    let session = state.runtime.session.clone();
+    let app = app.clone();
+    let _ = std::thread::Builder::new()
+        .name("ringpad-hotkey-pad".to_string())
+        .spawn(move || {
+            std::thread::sleep(wait);
+            let result =
+                session
+                    .lock()
+                    .map_err(|error| error.to_string())
+                    .and_then(|mut session| {
+                        ringpad_core::actions::play_pad(&mut session, slot)
+                            .map_err(|error| error.to_string())?;
+                        Ok(())
+                    });
+            if let Err(error) = result {
+                commands::emit_error(&app, error);
+            }
+            let state = app.state::<AppState>();
+            commands::emit_playback(&app, state.inner());
+        });
 }
 
 fn matches_key(configured: Option<&str>, key: &str) -> bool {
@@ -246,6 +362,7 @@ mod tests {
                 send_alt: None,
                 stop: None,
                 save: None,
+                talk: None,
             },
             ..Settings::default()
         };

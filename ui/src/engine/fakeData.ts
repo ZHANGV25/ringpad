@@ -1,4 +1,4 @@
-import type { AudioApp, ClipInfo, DeviceInfo, PadInfo, Settings } from './types'
+import type { AudioApp, ClipInfo, DeviceInfo, PadInfo, Settings, TalkState } from './types'
 
 export function makeDevices(): DeviceInfo[] {
   return [
@@ -75,7 +75,7 @@ export function requirePad(pads: Array<PadInfo | null>, slot: number): PadInfo {
 }
 
 export function cloneSettings(settings: Settings): Settings {
-  return { ...settings, source: { ...settings.source }, hotkeys: { ...settings.hotkeys } }
+  return { ...settings, source: { ...settings.source }, hotkeys: { ...settings.hotkeys }, gameTalkKeys: [...settings.gameTalkKeys] }
 }
 
 export function cloneDevices(devices: DeviceInfo[]): DeviceInfo[] {
@@ -92,4 +92,8 @@ export function clonePad(pad: PadInfo): PadInfo {
 
 export function clonePads(pads: Array<PadInfo | null>): Array<PadInfo | null> {
   return pads.map((pad) => (pad ? clonePad(pad) : null))
+}
+
+export function cloneTalk(talk: TalkState): TalkState {
+  return { ...talk, holding: [...talk.holding] }
 }

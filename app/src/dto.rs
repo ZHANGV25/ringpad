@@ -99,6 +99,18 @@ pub struct Playback {
     pub save_armed: bool,
 }
 
+/// Talk state for the UI.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TalkState {
+    /// Whether the real mic currently reaches the cable.
+    pub mic_open: bool,
+    /// Game talk keys Ringpad is holding.
+    pub holding: Vec<String>,
+    /// Windows blocking sentence, when present.
+    pub blocked: Option<String>,
+}
+
 /// Engine status for the UI.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(
@@ -148,6 +160,8 @@ pub struct Snapshot {
     pub playback: Playback,
     /// Virtual capture-side device hint.
     pub virtual_capture_hint: Option<String>,
+    /// Current talk state.
+    pub talk: TalkState,
 }
 
 impl From<ringpad_windows::DeviceInfo> for DeviceInfo {

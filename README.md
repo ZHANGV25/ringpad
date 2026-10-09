@@ -22,6 +22,13 @@ Free and open source (MIT). Windows 10 and 11. Everything runs on your PC.
 4. **Save** (F6, then a pad key) keeps a clip on a pad. You can also drop a WAV, MP3, OGG or FLAC
    file on a pad.
 
+Ringpad can also make your own mic push-to-talk or toggle-to-talk inside Ringpad. Clips and pads
+still always go through the cable.
+
+For push-to-talk-only games such as Valorant team chat, Ringpad can hold the game's talk key while
+a clip plays, or while your mic is on. It uses a normal Windows key press, needs no driver, and
+does not touch the game. This is off by default.
+
 Windows only lets an app add a microphone through a virtual audio cable, so Ringpad needs one.
 [VB-CABLE](https://vb-audio.com/Cable/) is free and takes a minute to install. Voicemod's and
 VoiceMeeter's virtual devices work too.

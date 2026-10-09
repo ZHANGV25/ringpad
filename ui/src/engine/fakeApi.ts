@@ -1,36 +1,8 @@
 import type { EngineApi, FileDropEvent, Unsubscribe } from './api'
-import {
-  DEFAULT_PAD_HOTKEYS,
-  DEFAULT_SETTINGS,
-  type AudioApp,
-  type ClipInfo,
-  type DeviceInfo,
-  type EngineStatus,
-  type Meters,
-  type PadInfo,
-  type Settings,
-  type SettingsPatch,
-  type Snapshot,
-} from './types'
+import { DEFAULT_PAD_HOTKEYS, DEFAULT_SETTINGS, DEFAULT_TALK, type AudioApp, type ClipInfo, type DeviceInfo, type EngineStatus, type Meters, type PadInfo, type Settings, type SettingsPatch, type Snapshot, type TalkState } from './types'
 import type { EventName, EventPayloads, Listener } from './fakeEvents'
-import {
-  cleanName,
-  clamp,
-  cloneClip,
-  cloneDevices,
-  clonePad,
-  clonePads,
-  cloneSettings,
-  makeApps,
-  makeClip,
-  makeDevices,
-  makePad,
-  makePeaks,
-  speechLevel,
-  requirePad,
-  seededRandom,
-  walk,
-} from './fakeData'
+import { nextTalkState, talkEqual, validateTalkSettings } from './fakeTalk'
+import { cleanName, clamp, cloneClip, cloneDevices, clonePad, clonePads, cloneSettings, cloneTalk, makeApps, makeClip, makeDevices, makePad, makePeaks, requirePad, seededRandom, speechLevel, walk } from './fakeData'
 interface FakeOptions {
   now?: () => number
   random?: () => number
@@ -40,7 +12,6 @@ interface FakeOptions {
   devices?: DeviceInfo[]
 }
 const LIVE_PEAKS = 300
-
 export class FakeEngineApi implements EngineApi {
   private readonly listeners = new Map<EventName, Set<(payload: never) => void>>()
   private readonly now: () => number
@@ -55,10 +26,17 @@ export class FakeEngineApi implements EngineApi {
   private readonly devices: DeviceInfo[]
   private status = { kind: 'running' as const, sourceLabel: 'your headphones' }
   private settings: Settings
+  private talk: TalkState = cloneTalk(DEFAULT_TALK)
   private clip: ClipInfo | null = null
   private pads: Array<PadInfo | null> = Array.from({ length: 8 }, () => null)
   private playback = { sending: false, previewing: false, saveArmed: false }
   private keyCapture = false
+  private heldKeys = new Set<string>()
+  private toggledMicOpen = false
+  private clipHolding = false
+  private sendingTimer: number | null = null
+  private talkTailTimer: number | null = null
+  private talkTestTimer: number | null = null
   public openedUrl: string | null = null
   public clipsFolderOpened = false
   constructor(options: FakeOptions = {}) {
@@ -75,6 +53,7 @@ export class FakeEngineApi implements EngineApi {
     }
     this.settings.virtualOutput = this.settings.virtualOutput ?? 'vb-output'
     this.settings.headphones = this.settings.headphones ?? 'headphones'
+    this.recomputeTalk(false)
     if (options.startTimers !== false) {
       this.meterTimer = window.setInterval(() => this.tickMeters(), 33)
       this.liveTimer = window.setInterval(() => this.tickLive(), 100)
@@ -92,6 +71,7 @@ export class FakeEngineApi implements EngineApi {
       pads: clonePads(this.pads),
       playback: { ...this.playback },
       virtualCaptureHint: 'CABLE Output (VB-Audio Virtual Cable)',
+      talk: cloneTalk(this.talk),
     }
   }
 
@@ -99,7 +79,6 @@ export class FakeEngineApi implements EngineApi {
     this.emit('devices', cloneDevices(this.devices))
     return cloneDevices(this.devices)
   }
-
   async listAudioApps(): Promise<AudioApp[]> {
     this.apps = this.apps.map((app, index) => ({
       ...app,
@@ -108,17 +87,24 @@ export class FakeEngineApi implements EngineApi {
     }))
     return this.apps.map((app) => ({ ...app }))
   }
-
   async updateSettings({ patch }: { patch: SettingsPatch }): Promise<Settings> {
-    this.settings = {
+    const next = {
       ...this.settings,
       ...patch,
       hotkeys: patch.hotkeys ? { ...this.settings.hotkeys, ...patch.hotkeys } : this.settings.hotkeys,
+      gameTalkKeys: patch.gameTalkKeys ? [...patch.gameTalkKeys] : this.settings.gameTalkKeys,
     }
+    validateTalkSettings(next, this.pads)
+    this.settings = {
+      ...next,
+      hotkeys: { ...next.hotkeys },
+      gameTalkKeys: [...next.gameTalkKeys],
+    }
+    if (this.settings.micMode !== 'toggle') this.toggledMicOpen = false
     this.emit('settings', cloneSettings(this.settings))
+    this.recomputeTalk()
     return cloneSettings(this.settings)
   }
-
   async grabClip(): Promise<ClipInfo> {
     this.clipCounter += 1
     const seconds = this.settings.grabSeconds
@@ -132,7 +118,6 @@ export class FakeEngineApi implements EngineApi {
     }, 450)
     return cloneClip(this.clip)
   }
-
   async previewClip(): Promise<void> {
     if (!this.clip) {
       throw new Error('No clip yet')
@@ -140,7 +125,6 @@ export class FakeEngineApi implements EngineApi {
     this.playback = { ...this.playback, previewing: true }
     this.emit('playback', { ...this.playback })
   }
-
   async sendClip(): Promise<void> {
     if (!this.clip) {
       throw new Error('No clip yet')
@@ -150,7 +134,13 @@ export class FakeEngineApi implements EngineApi {
 
   async stopAll(): Promise<void> {
     this.playback = { sending: false, previewing: false, saveArmed: false }
+    this.clipHolding = false
+    this.toggledMicOpen = false
+    if (this.sendingTimer !== null) window.clearTimeout(this.sendingTimer)
+    this.sendingTimer = null
+    this.clearTalkTimers()
     this.emit('playback', { ...this.playback })
+    this.recomputeTalk()
   }
 
   async saveClipToPad({ slot }: { slot: number }): Promise<PadInfo> {
@@ -234,6 +224,18 @@ export class FakeEngineApi implements EngineApi {
     this.clipsFolderOpened = true
   }
 
+  async testTalkKeys(): Promise<void> {
+    if (this.talk.blocked) {
+      throw new Error(this.talk.blocked)
+    }
+    if (this.talkTestTimer !== null) window.clearTimeout(this.talkTestTimer)
+    this.talkTestTimer = window.setTimeout(() => {
+      this.talkTestTimer = null
+      this.recomputeTalk()
+    }, 2000)
+    this.recomputeTalk()
+  }
+
   onStatus: EngineApi['onStatus'] = (handler) => this.subscribe('status', handler)
   onMeters: EngineApi['onMeters'] = (handler) => this.subscribe('meters', handler)
   onLive: EngineApi['onLive'] = (handler) => this.subscribe('live', handler)
@@ -244,16 +246,52 @@ export class FakeEngineApi implements EngineApi {
   onSettings: EngineApi['onSettings'] = (handler) => this.subscribe('settings', handler)
   onKeyCaptured: EngineApi['onKeyCaptured'] = (handler) => this.subscribe('key-captured', handler)
   onError: EngineApi['onError'] = (handler) => this.subscribe('error', handler)
+  onTalk: EngineApi['onTalk'] = (handler) => this.subscribe('talk', handler)
   onFileDrop: EngineApi['onFileDrop'] = (handler) => this.subscribe('file-drop', handler)
   simulateKey(key: string): void {
     if (this.keyCapture) {
       this.keyCapture = false
       this.emit('key-captured', { key })
+      return
     }
+    this.simulateKeyDown(key)
+    this.simulateKeyUp(key)
+  }
+
+  simulateKeyDown(key: string): void {
+    if (this.keyCapture) {
+      this.keyCapture = false
+      this.emit('key-captured', { key })
+      return
+    }
+    const talkKey = this.settings.hotkeys.talk
+    if (!talkKey || key !== talkKey || this.settings.micMode === 'open') {
+      return
+    }
+    if (this.settings.micMode === 'pushToTalk') {
+      this.heldKeys = new Set([...this.heldKeys, key])
+    } else if (!this.heldKeys.has(key)) {
+      this.toggledMicOpen = !this.toggledMicOpen
+      this.heldKeys = new Set([...this.heldKeys, key])
+    }
+    this.recomputeTalk()
+  }
+
+  simulateKeyUp(key: string): void {
+    if (!this.heldKeys.has(key)) {
+      return
+    }
+    this.heldKeys = new Set([...this.heldKeys].filter((item) => item !== key))
+    this.recomputeTalk()
   }
 
   emitError(message: string): void {
     this.emit('error', { message })
+  }
+
+  simulateTalkBlocked(message: string | null): void {
+    this.talk = { ...this.talk, blocked: message }
+    this.emit('talk', cloneTalk(this.talk))
   }
 
   emitFileDrop(event: FileDropEvent): void {
@@ -278,6 +316,8 @@ export class FakeEngineApi implements EngineApi {
     if (this.meterTimer !== null) window.clearInterval(this.meterTimer)
     if (this.liveTimer !== null) window.clearInterval(this.liveTimer)
     if (this.previewTimer !== null) window.clearTimeout(this.previewTimer)
+    if (this.sendingTimer !== null) window.clearTimeout(this.sendingTimer)
+    this.clearTalkTimers()
   }
 
   private subscribe<K extends EventName>(name: K, handler: Listener<K>): Unsubscribe {
@@ -294,7 +334,7 @@ export class FakeEngineApi implements EngineApi {
   private tickMeters(): void {
     this.meters = {
       source: walk(this.meters.source, this.random),
-      mic: this.settings.micEnabled ? walk(this.meters.mic, this.random) * 0.5 : 0,
+      mic: this.settings.micEnabled && this.talk.micOpen ? walk(this.meters.mic, this.random) * 0.5 : 0,
       outgoing: this.playback.sending ? walk(this.meters.outgoing || 0.4, this.random) : this.meters.outgoing * 0.82,
     }
     this.emit('meters', { ...this.meters })
@@ -308,7 +348,49 @@ export class FakeEngineApi implements EngineApi {
 
   private startSending(): void {
     this.playback = { sending: true, previewing: false, saveArmed: this.playback.saveArmed }
+    this.clipHolding = true
+    if (this.sendingTimer !== null) window.clearTimeout(this.sendingTimer)
+    this.sendingTimer = window.setTimeout(() => {
+      this.sendingTimer = null
+      this.playback = { ...this.playback, sending: false }
+      this.emit('playback', { ...this.playback })
+      this.releaseClipAfterTail()
+    }, 650)
     this.emit('playback', { ...this.playback })
+    this.recomputeTalk()
+  }
+
+  private releaseClipAfterTail(): void {
+    if (this.talkTailTimer !== null) window.clearTimeout(this.talkTailTimer)
+    this.talkTailTimer = window.setTimeout(() => {
+      this.talkTailTimer = null
+      this.clipHolding = false
+      this.recomputeTalk()
+    }, this.settings.talkTailMs)
+  }
+
+  private clearTalkTimers(): void {
+    if (this.talkTailTimer !== null) window.clearTimeout(this.talkTailTimer)
+    if (this.talkTestTimer !== null) window.clearTimeout(this.talkTestTimer)
+    this.talkTailTimer = null
+    this.talkTestTimer = null
+  }
+
+  private recomputeTalk(emitChange = true): void {
+    const next = nextTalkState({
+      settings: this.settings,
+      current: this.talk,
+      heldKeys: this.heldKeys,
+      toggledMicOpen: this.toggledMicOpen,
+      clipHolding: this.clipHolding,
+      testingKeys: this.talkTestTimer !== null,
+    })
+    if (!talkEqual(this.talk, next)) {
+      this.talk = next
+      if (emitChange) this.emit('talk', cloneTalk(this.talk))
+    } else {
+      this.talk = next
+    }
   }
 }
 

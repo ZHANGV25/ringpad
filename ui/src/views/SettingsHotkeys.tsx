@@ -19,7 +19,7 @@ interface PendingConflict {
   conflict: Binding
 }
 
-const MAIN_KEYS: readonly MainHotkey[] = ['grab', 'send', 'sendAlt', 'stop', 'save']
+const MAIN_KEYS: readonly MainHotkey[] = ['grab', 'send', 'sendAlt', 'stop', 'save', 'talk']
 
 const MAIN_LABELS: Record<MainHotkey, string> = {
   grab: 'Clip',
@@ -27,6 +27,7 @@ const MAIN_LABELS: Record<MainHotkey, string> = {
   sendAlt: 'Send (second key)',
   stop: 'Stop',
   save: 'Save to pad',
+  talk: 'Talk',
 }
 
 interface HotkeysTabProps {
@@ -41,7 +42,14 @@ export function HotkeysTab({ settings, pads }: HotkeysTabProps) {
         <span className="label">Actions</span>
         <div className="hotkey-list">
           {MAIN_KEYS.map((key) => (
-            <HotkeyRow key={key} label={MAIN_LABELS[key]} target={{ kind: 'main', key }} value={settings.hotkeys[key]} />
+            <HotkeyRow
+              key={key}
+              label={MAIN_LABELS[key]}
+              target={{ kind: 'main', key }}
+              value={settings.hotkeys[key]}
+              hint={key === 'talk' ? 'Set it in Talk' : undefined}
+              readOnly={key === 'talk'}
+            />
           ))}
         </div>
       </section>

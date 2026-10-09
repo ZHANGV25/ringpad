@@ -87,6 +87,7 @@ export function EngineProvider({ api: providedApi, children }: Props) {
       api.onClip((clip) => dispatch({ type: 'clip', clip })),
       api.onPads((pads) => dispatch({ type: 'pads', pads })),
       api.onPlayback((playback) => dispatch({ type: 'playback', playback })),
+      api.onTalk((talk) => dispatch({ type: 'talk', talk })),
       api.onDevices((devices) => dispatch({ type: 'devices', devices })),
       api.onSettings((settings) => {
         dispatch({ type: 'settings', settings })

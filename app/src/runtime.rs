@@ -1,6 +1,6 @@
 //! Runtime ownership for audio, input, watcher, and shared app state.
 
-use std::sync::atomic::{AtomicBool, AtomicU64};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -37,6 +37,8 @@ pub struct AppState {
     pub last_clip: Mutex<Option<ClipInfo>>,
     /// Last reported status.
     pub status: Mutex<EngineStatus>,
+    /// Talk controller.
+    pub talk: Mutex<crate::talk::TalkController>,
 }
 
 /// Runtime pieces that must be stopped explicitly.
@@ -51,6 +53,8 @@ pub struct AppRuntime {
     running_key: Mutex<Option<String>>,
     /// What the running service records, for the status line.
     label: Mutex<String>,
+    /// Current mic gate value to apply across audio restarts.
+    mic_open: AtomicBool,
 }
 
 impl AppState {
@@ -63,6 +67,13 @@ impl AppState {
         session.slots_dir = Some(paths.slots_dir.clone());
         let _ = load_slots(&mut session);
         pads_store.apply_to_bank(&mut session.pads);
+        let talk = crate::talk::TalkController::new(
+            settings.clone(),
+            Box::new(ringpad_windows::KeyPresser::new()),
+            paths.data_dir.clone(),
+        );
+        let mic_open = talk.mic_open();
+        session.handle.set_mic_open(mic_open);
         Self {
             paths,
             settings: Mutex::new(settings),
@@ -75,12 +86,14 @@ impl AppState {
                 retry: Mutex::new(None),
                 running_key: Mutex::new(None),
                 label: Mutex::new(String::new()),
+                mic_open: AtomicBool::new(mic_open),
             }),
             key_capture: AtomicBool::new(false),
             quit: AtomicBool::new(false),
             clip_counter: AtomicU64::new(0),
             last_clip: Mutex::new(None),
             status: Mutex::new(EngineStatus::Starting),
+            talk: Mutex::new(talk),
         }
     }
 }
@@ -121,6 +134,14 @@ impl AppRuntime {
             if let Some(watcher) = watcher.take() {
                 watcher.stop();
             }
+        }
+    }
+
+    /// Updates the mic gate on the current and next engine handles.
+    pub fn set_mic_open(&self, open: bool) {
+        self.mic_open.store(open, Ordering::Release);
+        if let Ok(session) = self.session.lock() {
+            session.handle.set_mic_open(open);
         }
     }
 
@@ -258,6 +279,9 @@ impl AppRuntime {
         session.handle.set_send_volume(settings.send_volume);
         session.handle.set_monitor_volume(settings.monitor_volume);
         session.handle.set_ducking(settings.ducking);
+        session
+            .handle
+            .set_mic_open(self.mic_open.load(Ordering::Acquire));
     }
 
     fn set_retry(&self, settings: Settings) {

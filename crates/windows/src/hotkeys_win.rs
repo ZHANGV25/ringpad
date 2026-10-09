@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::atomic::{AtomicIsize, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
@@ -69,6 +70,7 @@ struct InputState {
     raw_keyboard: Option<Sender<RawKeyboardEvent>>,
     raw_mouse: Option<Sender<RawMouseEvent>>,
     pressed: [bool; 256],
+    physical_keys: HashSet<String>,
 }
 
 fn input_thread(
@@ -92,6 +94,7 @@ fn input_thread(
             raw_keyboard,
             raw_mouse,
             pressed: [false; 256],
+            physical_keys: HashSet::new(),
         });
     } else {
         return;
@@ -209,15 +212,20 @@ fn handle_raw_input(lparam: LPARAM) {
     }
     if raw.header.dwType == RIM_TYPEKEYBOARD.0 {
         let keyboard = unsafe { raw.data.keyboard };
-        emit_keyboard(keyboard.VKey, keyboard.MakeCode, keyboard.Flags);
+        emit_keyboard(
+            keyboard.VKey,
+            keyboard.MakeCode,
+            keyboard.Flags,
+            raw.header.hDevice.0.is_null(),
+        );
     } else if raw.header.dwType == RIM_TYPEMOUSE.0 {
         let mouse = unsafe { raw.data.mouse };
         let buttons = unsafe { mouse.Anonymous.Anonymous };
-        emit_mouse(buttons.usButtonFlags);
+        emit_mouse(buttons.usButtonFlags, raw.header.hDevice.0.is_null());
     }
 }
 
-fn emit_keyboard(vkey: u16, scan_code: u16, flags: u16) {
+fn emit_keyboard(vkey: u16, scan_code: u16, flags: u16, injected: bool) {
     let key = key_name_from_vkey(vkey, scan_code, flags);
     let down = flags & RI_KEY_BREAK == 0;
     let Ok(mut state) = INPUT_STATE.lock() else {
@@ -233,26 +241,37 @@ fn emit_keyboard(vkey: u16, scan_code: u16, flags: u16) {
             flags,
         });
     }
-    let index = usize::from(vkey.min(255));
-    if down {
-        if state.pressed[index] {
-            return;
+    if !injected {
+        if down {
+            state.physical_keys.insert(key.clone());
+        } else {
+            state.physical_keys.remove(&key);
         }
-        state.pressed[index] = true;
-    } else {
-        state.pressed[index] = false;
+        let index = usize::from(vkey.min(255));
+        if down {
+            if state.pressed[index] {
+                return;
+            }
+            state.pressed[index] = true;
+        } else {
+            state.pressed[index] = false;
+        }
     }
-    let _ = state.sender.send(HotkeyEvent { key, down });
+    let _ = state.sender.send(HotkeyEvent {
+        key,
+        down,
+        injected,
+    });
 }
 
-fn emit_mouse(flags: u16) {
+fn emit_mouse(flags: u16, injected: bool) {
     if flags == 0 {
         return;
     }
-    let Ok(state) = INPUT_STATE.lock() else {
+    let Ok(mut state) = INPUT_STATE.lock() else {
         return;
     };
-    let Some(state) = state.as_ref() else {
+    let Some(state) = state.as_mut() else {
         return;
     };
     // Report anything except left/right buttons and the wheels (RI_MOUSE_WHEEL, RI_MOUSE_HWHEEL).
@@ -264,8 +283,31 @@ fn emit_mouse(flags: u16) {
         }
     }
     for (key, down) in mouse_events_from_button_flags(flags) {
-        let _ = state.sender.send(HotkeyEvent { key, down });
+        if !injected {
+            if down {
+                state.physical_keys.insert(key.clone());
+            } else {
+                state.physical_keys.remove(&key);
+            }
+        }
+        let _ = state.sender.send(HotkeyEvent {
+            key,
+            down,
+            injected,
+        });
     }
+}
+
+pub fn physical_key_down(key: &str) -> bool {
+    INPUT_STATE
+        .lock()
+        .ok()
+        .and_then(|state| {
+            state
+                .as_ref()
+                .map(|state| state.physical_keys.contains(key))
+        })
+        .unwrap_or(false)
 }
 
 fn post_stop(hwnd: isize) {

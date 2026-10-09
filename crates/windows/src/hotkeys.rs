@@ -17,6 +17,8 @@ pub struct HotkeyEvent {
     pub key: String,
     /// True for key/button down, false for up.
     pub down: bool,
+    /// True when Raw Input reports a null device handle.
+    pub injected: bool,
 }
 
 /// Raw keyboard details useful while probing unfamiliar hardware.
@@ -166,6 +168,13 @@ mod win;
 #[cfg(windows)]
 pub use win::HotkeyListener;
 
+/// Returns whether a real hardware key is currently held according to Raw Input.
+#[cfg(windows)]
+#[must_use]
+pub fn physical_key_down(key: &str) -> bool {
+    win::physical_key_down(key)
+}
+
 /// Raw Input listener.
 #[cfg(not(windows))]
 pub struct HotkeyListener;
@@ -183,4 +192,11 @@ impl HotkeyListener {
 
     /// Stops the listener.
     pub fn stop(self) {}
+}
+
+/// Returns whether a real hardware key is currently held according to Raw Input.
+#[cfg(not(windows))]
+#[must_use]
+pub fn physical_key_down(_key: &str) -> bool {
+    false
 }

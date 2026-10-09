@@ -7,7 +7,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 use tauri_plugin_autostart::ManagerExt as _;
 
-use crate::dto::{self, EngineStatus, PadInfo, Playback};
+use crate::dto::{self, EngineStatus, PadInfo, Playback, TalkState};
 use crate::runtime::AppState;
 use crate::settings;
 
@@ -40,6 +40,12 @@ pub fn emit_playback(app: &AppHandle, state: &AppState) {
     if let Ok(session) = state.runtime.session.lock() {
         emit(app, "playback", playback_from_session(&session));
     }
+}
+
+/// Emits talk state and syncs the engine mic gate.
+pub fn emit_talk(app: &AppHandle, state: &AppState, talk: TalkState) {
+    state.runtime.set_mic_open(talk.mic_open);
+    emit(app, "talk", talk);
 }
 
 /// Emits an error event.

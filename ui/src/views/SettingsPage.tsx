@@ -5,8 +5,9 @@ import { useEngine } from '../state/EngineProvider'
 import { AudioTab } from './SettingsAudio'
 import { HotkeysTab } from './SettingsHotkeys'
 import { AboutTab, GeneralTab, PadsTab } from './SettingsMisc'
+import { TalkTab } from './SettingsTalk'
 
-type Tab = 'audio' | 'hotkeys' | 'pads' | 'general' | 'about'
+type Tab = 'audio' | 'talk' | 'hotkeys' | 'pads' | 'general' | 'about'
 
 interface Props {
   onBack: () => void
@@ -14,12 +15,13 @@ interface Props {
 
 const TAB_LABELS: Record<Tab, string> = {
   audio: 'Audio',
+  talk: 'Talk',
   hotkeys: 'Hotkeys',
   pads: 'Pads',
   general: 'General',
   about: 'About',
 }
-const TABS: readonly Tab[] = ['audio', 'hotkeys', 'pads', 'general', 'about']
+const TABS: readonly Tab[] = ['audio', 'talk', 'hotkeys', 'pads', 'general', 'about']
 
 export function SettingsPage({ onBack }: Props) {
   const { state } = useEngine()
@@ -39,6 +41,7 @@ export function SettingsPage({ onBack }: Props) {
       <Segmented label="Settings sections" options={TABS} value={tab} labels={TAB_LABELS} onChange={setTab} variant="tabs" />
       <div className="settings-body">
         {tab === 'audio' ? <AudioTab settings={state.settings} /> : null}
+        {tab === 'talk' ? <TalkTab settings={state.settings} talk={state.talk} /> : null}
         {tab === 'hotkeys' ? <HotkeysTab settings={state.settings} pads={state.pads} /> : null}
         {tab === 'pads' ? <PadsTab pads={state.pads} /> : null}
         {tab === 'general' ? <GeneralTab settings={state.settings} /> : null}

@@ -29,7 +29,11 @@ export interface Hotkeys {
   sendAlt: string | null
   stop: string | null
   save: string | null
+  talk: string | null
 }
+
+export type MicMode = 'open' | 'pushToTalk' | 'toggle'
+export type PressTalkKeys = 'off' | 'clips' | 'clipsAndMic'
 
 export interface Settings {
   theme: ThemePreference
@@ -50,6 +54,12 @@ export interface Settings {
   startWithWindows: boolean
   clipRetentionDays: number
   firstRunDone: boolean
+  micMode: MicMode
+  pressTalkKeys: PressTalkKeys
+  gameTalkKeys: string[]
+  talkLeadMs: number
+  talkTailMs: number
+  talkOnlyApp: string | null
 }
 
 export type EngineStatus =
@@ -86,6 +96,12 @@ export interface Playback {
   saveArmed: boolean
 }
 
+export interface TalkState {
+  micOpen: boolean
+  holding: string[]
+  blocked: string | null
+}
+
 export interface Snapshot {
   version: string
   backend: string
@@ -96,6 +112,7 @@ export interface Snapshot {
   pads: Array<PadInfo | null>
   playback: Playback
   virtualCaptureHint: string | null
+  talk: TalkState
 }
 
 export type SettingsPatch = Partial<Settings>
@@ -106,6 +123,7 @@ export const DEFAULT_HOTKEYS: Hotkeys = {
   sendAlt: 'mouse5',
   stop: 'f9',
   save: 'f6',
+  talk: null,
 }
 
 export const DEFAULT_PAD_HOTKEYS: ReadonlyArray<string | null> = [
@@ -137,7 +155,15 @@ export const DEFAULT_SETTINGS: Settings = {
   startWithWindows: false,
   clipRetentionDays: 7,
   firstRunDone: false,
+  micMode: 'open',
+  pressTalkKeys: 'off',
+  gameTalkKeys: ['v'],
+  talkLeadMs: 100,
+  talkTailMs: 250,
+  talkOnlyApp: null,
 }
+
+export const DEFAULT_TALK: TalkState = { micOpen: true, holding: [], blocked: null }
 
 export function makeEmptyPads(): Array<PadInfo | null> {
   return Array.from({ length: 8 }, () => null)

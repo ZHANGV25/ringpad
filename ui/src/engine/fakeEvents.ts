@@ -1,5 +1,5 @@
 import type { FileDropEvent } from './api'
-import type { ClipInfo, DeviceInfo, EngineStatus, Meters, PadInfo, Playback, Settings } from './types'
+import type { ClipInfo, DeviceInfo, EngineStatus, Meters, PadInfo, Playback, Settings, TalkState } from './types'
 
 export type EventName =
   | 'status'
@@ -12,6 +12,7 @@ export type EventName =
   | 'settings'
   | 'key-captured'
   | 'error'
+  | 'talk'
   | 'file-drop'
 
 export interface EventPayloads {
@@ -25,6 +26,7 @@ export interface EventPayloads {
   settings: Settings
   'key-captured': { key: string }
   error: { message: string }
+  talk: TalkState
   'file-drop': FileDropEvent
 }
 

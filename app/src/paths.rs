@@ -9,6 +9,8 @@ use thiserror::Error;
 /// Ringpad data paths.
 #[derive(Debug, Clone)]
 pub struct AppPaths {
+    /// Ringpad data directory.
+    pub data_dir: PathBuf,
     /// Captured clips directory.
     pub clips_dir: PathBuf,
     /// Pad slot WAV directory.
@@ -44,6 +46,7 @@ impl AppPaths {
         Ok(Self {
             settings_json: data_dir.join("settings.json"),
             pads_json: data_dir.join("pads.json"),
+            data_dir,
             clips_dir,
             slots_dir,
         })

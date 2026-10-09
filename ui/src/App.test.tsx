@@ -129,6 +129,23 @@ describe('main window', () => {
     expect(await screen.findByText('80%')).toBeTruthy()
   })
 
+  it('shows talk status chips and blocked messages near the meters', async () => {
+    const api = await renderApp(makeApi({ settings: { micMode: 'pushToTalk', hotkeys: { talk: 't' } as never } }))
+    expect(screen.getByText('Mic off')).toBeTruthy()
+    act(() => api.simulateKeyDown('t'))
+    expect(await screen.findByText('Mic on')).toBeTruthy()
+    act(() => api.simulateKeyUp('t'))
+    expect(await screen.findByText('Mic off')).toBeTruthy()
+
+    await act(() => api.updateSettings({ patch: { pressTalkKeys: 'clips' } }))
+    await act(() => api.testTalkKeys())
+    expect(await screen.findByText('Holding V')).toBeTruthy()
+
+    act(() => api.simulateTalkBlocked('Windows blocked VALORANT. Run Ringpad as administrator.'))
+    expect(screen.getByRole('alert').textContent).toBe('Windows blocked VALORANT. Run Ringpad as administrator.')
+    api.dispose()
+  })
+
   it('offers a fix when the engine needs setup, and opens settings', async () => {
     const api = await renderApp()
     act(() => api.simulateStatus({ kind: 'needsSetup', reason: 'No virtual cable' }))

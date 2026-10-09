@@ -35,6 +35,8 @@ pub const DUCK_GAIN: f32 = 0.15;
 pub const DUCK_ATTACK_SECONDS: f32 = 0.010;
 /// Duck release duration in seconds.
 pub const DUCK_RELEASE_SECONDS: f32 = 0.150;
+/// Mic gate fade duration in seconds.
+pub const MIC_GATE_SECONDS: f32 = 0.005;
 
 const COMMAND_CAPACITY: usize = 64;
 const RETIRED_CAPACITY: usize = 256;
@@ -56,6 +58,7 @@ pub struct Engine {
     voice_fifo: Option<SampleFifo>,
     gate: Option<EchoGate>,
     duck_state: f32,
+    mic_gate_state: f32,
     mix_scratch: Vec<f32>,
     clip_scratch: Vec<f32>,
     mic_scratch: Vec<f32>,
@@ -102,6 +105,7 @@ impl Engine {
             gate: (config.monitoring && config.recording_headphones)
                 .then(|| EchoGate::new(ECHO_TAIL_SECONDS)),
             duck_state: 1.0,
+            mic_gate_state: 1.0,
             mix_scratch: vec![0.0; rate as usize + 4],
             clip_scratch: vec![0.0; rate as usize + 4],
             mic_scratch: vec![0.0; rate as usize + 4],
@@ -227,8 +231,9 @@ impl Engine {
         while index < out.len() {
             let clip = self.clip_scratch[index];
             let mic = self.mic_scratch[index];
+            let gate = self.next_mic_gate_gain();
             let duck = self.next_duck_gain(clip_playing);
-            out[index] = clip_sample(clip * send + mic * duck);
+            out[index] = clip_sample(clip * send + mic * gate * duck);
             index += 1;
         }
         self.now_seconds += out.len() as f64 / f64::from(self.rate);
@@ -406,6 +411,21 @@ impl Engine {
             self.duck_state = (self.duck_state - step).max(target);
         }
         self.duck_state
+    }
+
+    fn next_mic_gate_gain(&mut self) -> f32 {
+        let target = if self.shared.mic_open.load(Ordering::Acquire) {
+            1.0
+        } else {
+            0.0
+        };
+        let step = (1.0 / (MIC_GATE_SECONDS * self.rate as f32)).min(1.0);
+        if self.mic_gate_state < target {
+            self.mic_gate_state = (self.mic_gate_state + step).min(target);
+        } else if self.mic_gate_state > target {
+            self.mic_gate_state = (self.mic_gate_state - step).max(target);
+        }
+        self.mic_gate_state
     }
 }
 

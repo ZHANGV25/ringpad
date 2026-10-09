@@ -9,6 +9,7 @@ pub mod hotkeys;
 pub mod mixdown;
 pub mod service;
 pub mod sessions;
+pub mod talk_keys;
 pub mod watcher;
 
 use thiserror::Error;
@@ -17,6 +18,7 @@ pub use devices::{DeviceDirection, DeviceInfo, DevicePickError, VirtualCable};
 pub use hotkeys::{HotkeyEvent, HotkeyListener, RawKeyboardEvent, RawMouseEvent};
 pub use service::{AudioService, ServiceConfig, ServiceStatus, SourceSpec};
 pub use sessions::{AudioApp, SessionError};
+pub use talk_keys::{KeyOutput, KeyPresser, TalkKeyError};
 pub use watcher::DeviceWatcher;
 
 /// Errors returned by the Windows backend.

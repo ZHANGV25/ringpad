@@ -62,6 +62,7 @@ describe('tauri api', () => {
       [() => tauriApi.playTestTone(), 'play_test_tone'],
       [() => tauriApi.openExternal({ url: 'https://x.dev' }), 'open_external', { url: 'https://x.dev' }],
       [() => tauriApi.openClipsFolder(), 'open_clips_folder'],
+      [() => tauriApi.testTalkKeys(), 'test_talk_keys'],
     ]
     for (const [run, name, args] of calls) {
       await run()
@@ -83,6 +84,7 @@ describe('tauri api', () => {
       settings: tauriApi.onSettings,
       'key-captured': tauriApi.onKeyCaptured,
       error: tauriApi.onError,
+      talk: tauriApi.onTalk,
     }
     const offs = Object.values(subscriptions).map((subscribe) => subscribe(handler))
     await flush()

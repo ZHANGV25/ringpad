@@ -108,6 +108,64 @@ fn real_mic_is_mixed_into_virtual_mic() {
     assert_all_approx(&play_virtual(&mut engine, 3), 0.3, 1e-6);
 }
 
+#[test]
+fn mic_gate_defaults_open_and_closes_without_muting_clips() {
+    let (mut engine, mut handle) = engine_pair(false, false, true, false);
+    assert!(handle.mic_open());
+    feed_mic(&mut engine, 0.25, 4);
+    assert_all_approx(&play_virtual(&mut engine, 1), 0.25, 1e-6);
+
+    handle.set_mic_open(false);
+    feed_mic(&mut engine, 0.25, 2);
+    let _ = play_virtual(&mut engine, 1);
+    handle
+        .play_send_clip(clip(&vec![0.7; BLOCK * 2]))
+        .expect("play");
+    feed_mic(&mut engine, 0.25, 2);
+    assert_all_approx(&play_virtual(&mut engine, 1), 0.7, 1e-6);
+}
+
+#[test]
+fn closed_mic_gate_reaches_exact_silence_after_five_ms() {
+    let mut config = EngineConfig::new(ENGINE_RATE, ENGINE_RATE, Some(ENGINE_RATE), ENGINE_RATE);
+    config.monitoring = false;
+    config.ducking = false;
+    let (mut engine, handle) = Engine::new(config);
+    handle.set_mic_open(false);
+    feed_mic(&mut engine, 0.5, 2);
+    let out = play_virtual(&mut engine, 1);
+    let fade = ENGINE_RATE as usize * 5 / 1000;
+    assert_all_approx(&out[fade..], 0.0, 1e-6);
+}
+
+#[test]
+fn mic_gate_closes_monotonically_within_five_ms() {
+    let mut config = EngineConfig::new(ENGINE_RATE, ENGINE_RATE, Some(ENGINE_RATE), ENGINE_RATE);
+    config.monitoring = false;
+    config.ducking = false;
+    let (mut engine, handle) = Engine::new(config);
+    handle.set_mic_open(false);
+    feed_mic(&mut engine, 1.0, 2);
+    let out = play_virtual(&mut engine, 1);
+    for pair in out.windows(2).take(ENGINE_RATE as usize * 5 / 1000) {
+        assert!(pair[1] <= pair[0] + 1e-6, "{pair:?}");
+    }
+    assert_approx(out[ENGINE_RATE as usize * 5 / 1000], 0.0, 1e-6);
+}
+
+#[test]
+fn mic_gate_reopens_the_real_mic() {
+    let (mut engine, handle) = engine_pair(false, false, true, false);
+    handle.set_mic_open(false);
+    feed_mic(&mut engine, 0.4, 2);
+    let _ = play_virtual(&mut engine, 1);
+    handle.set_mic_open(true);
+    feed_mic(&mut engine, 0.4, 2);
+    let out = play_virtual(&mut engine, 1);
+    let fade = ENGINE_RATE as usize * 5 / 1000;
+    assert_all_approx(&out[fade..], 0.4, 1e-6);
+}
+
 // test_no_headphone_stream_when_nothing_to_hear
 #[test]
 fn no_headphone_player_when_monitoring_off() {

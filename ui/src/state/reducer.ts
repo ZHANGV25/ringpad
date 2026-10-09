@@ -1,3 +1,4 @@
+import { DEFAULT_TALK } from '../engine/types'
 import type {
   ClipInfo,
   DeviceInfo,
@@ -6,6 +7,7 @@ import type {
   Playback,
   Settings,
   Snapshot,
+  TalkState,
 } from '../engine/types'
 
 export interface Notice {
@@ -23,6 +25,7 @@ export interface EngineState {
   clip: ClipInfo | null
   pads: Array<PadInfo | null>
   playback: Playback
+  talk: TalkState
   virtualCaptureHint: string | null
   livePeaks: number[]
   notice: Notice | null
@@ -36,6 +39,7 @@ export type EngineAction =
   | { type: 'clip'; clip: ClipInfo }
   | { type: 'pads'; pads: Array<PadInfo | null> }
   | { type: 'playback'; playback: Playback }
+  | { type: 'talk'; talk: TalkState }
   | { type: 'live'; peaks: number[] }
   | { type: 'error'; message: string; id: number }
   | { type: 'clearError'; id: number }
@@ -50,6 +54,7 @@ export const initialEngineState: EngineState = {
   clip: null,
   pads: Array.from({ length: 8 }, () => null),
   playback: { sending: false, previewing: false, saveArmed: false },
+  talk: DEFAULT_TALK,
   virtualCaptureHint: null,
   livePeaks: [],
   notice: null,
@@ -69,6 +74,7 @@ export function engineReducer(state: EngineState, action: EngineAction): EngineS
         clip: action.snapshot.clip,
         pads: action.snapshot.pads,
         playback: action.snapshot.playback,
+        talk: action.snapshot.talk,
         virtualCaptureHint: action.snapshot.virtualCaptureHint,
       }
     case 'status':
@@ -83,6 +89,8 @@ export function engineReducer(state: EngineState, action: EngineAction): EngineS
       return { ...state, pads: action.pads }
     case 'playback':
       return { ...state, playback: action.playback }
+    case 'talk':
+      return { ...state, talk: action.talk }
     case 'live':
       return { ...state, livePeaks: action.peaks }
     case 'error':

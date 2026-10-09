@@ -184,6 +184,39 @@
   gap: 12px;
 }
 
+.talk-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 0 7px;
+  border: var(--hairline) solid var(--line-strong);
+  border-radius: var(--radius-xs);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.status-chip.filled {
+  border-color: var(--fill);
+  background: var(--fill);
+  color: var(--on-fill);
+}
+
+.status-chip.outline {
+  background: transparent;
+}
+
+.meter-error {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .footer .slider-row {
   grid-template-columns: auto 1fr 36px;
   min-height: 22px;

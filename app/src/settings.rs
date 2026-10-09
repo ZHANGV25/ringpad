@@ -5,6 +5,7 @@ use std::io::Write;
 use std::path::Path;
 
 use ringpad_core::keys::is_valid_key_name;
+use ringpad_core::talk::{MicMode, PressMode};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
@@ -59,6 +60,32 @@ pub struct Hotkeys {
     pub stop: Option<String>,
     /// Arm save-to-pad.
     pub save: Option<String>,
+    /// Ringpad talk key.
+    pub talk: Option<String>,
+}
+
+/// Persisted mic gate mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum MicModeSetting {
+    /// Mic is always open.
+    Open,
+    /// Mic opens while the talk key is held.
+    PushToTalk,
+    /// Mic toggles on each talk key press.
+    Toggle,
+}
+
+/// Persisted game talk-key press mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum PressTalkKeysSetting {
+    /// Do not press game talk keys.
+    Off,
+    /// Press game talk keys for clips and pads.
+    Clips,
+    /// Press game talk keys for clips, pads, and mic talk.
+    ClipsAndMic,
 }
 
 /// Persisted app settings matching the UI contract. Missing fields take their defaults,
@@ -100,6 +127,18 @@ pub struct Settings {
     pub clip_retention_days: u32,
     /// Whether onboarding has completed.
     pub first_run_done: bool,
+    /// Mic gate mode.
+    pub mic_mode: MicModeSetting,
+    /// Game talk-key press mode.
+    pub press_talk_keys: PressTalkKeysSetting,
+    /// Game talk keys to press.
+    pub game_talk_keys: Vec<String>,
+    /// Lead time before clips start, in milliseconds.
+    pub talk_lead_ms: u32,
+    /// Tail time after talk activity, in milliseconds.
+    pub talk_tail_ms: u32,
+    /// Optional foreground executable gate for game talk keys.
+    pub talk_only_app: Option<String>,
 }
 
 /// Settings persistence error.
@@ -114,6 +153,9 @@ pub enum SettingsError {
     /// Hotkey name is not recognized.
     #[error("Invalid key: {0}")]
     InvalidKey(String),
+    /// A key conflicts with another configured action.
+    #[error("{0}")]
+    Conflict(String),
 }
 
 impl Default for Hotkeys {
@@ -124,6 +166,7 @@ impl Default for Hotkeys {
             send_alt: Some("mouse5".to_string()),
             stop: Some("f9".to_string()),
             save: Some("f6".to_string()),
+            talk: None,
         }
     }
 }
@@ -148,6 +191,32 @@ impl Default for Settings {
             start_with_windows: false,
             clip_retention_days: 7,
             first_run_done: false,
+            mic_mode: MicModeSetting::Open,
+            press_talk_keys: PressTalkKeysSetting::Off,
+            game_talk_keys: vec!["v".to_string()],
+            talk_lead_ms: 100,
+            talk_tail_ms: 250,
+            talk_only_app: None,
+        }
+    }
+}
+
+impl From<MicModeSetting> for MicMode {
+    fn from(value: MicModeSetting) -> Self {
+        match value {
+            MicModeSetting::Open => Self::Open,
+            MicModeSetting::PushToTalk => Self::PushToTalk,
+            MicModeSetting::Toggle => Self::Toggle,
+        }
+    }
+}
+
+impl From<PressTalkKeysSetting> for PressMode {
+    fn from(value: PressTalkKeysSetting) -> Self {
+        match value {
+            PressTalkKeysSetting::Off => Self::Off,
+            PressTalkKeysSetting::Clips => Self::Clips,
+            PressTalkKeysSetting::ClipsAndMic => Self::ClipsAndMic,
         }
     }
 }
@@ -215,6 +284,14 @@ fn validate_and_clamp(mut settings: Settings) -> Result<Settings, SettingsError>
     validate_key(settings.hotkeys.send_alt.as_deref())?;
     validate_key(settings.hotkeys.stop.as_deref())?;
     validate_key(settings.hotkeys.save.as_deref())?;
+    validate_key(settings.hotkeys.talk.as_deref())?;
+    settings.talk_lead_ms = settings.talk_lead_ms.min(500);
+    settings.talk_tail_ms = settings.talk_tail_ms.min(2000);
+    settings.talk_only_app = settings
+        .talk_only_app
+        .and_then(|app| non_empty_trimmed(app.as_str()));
+    settings.game_talk_keys = clean_game_talk_keys(settings.game_talk_keys);
+    validate_main_talk_conflicts(&settings)?;
     Ok(settings)
 }
 
@@ -225,6 +302,65 @@ fn validate_key(key: Option<&str>) -> Result<(), SettingsError> {
         }
     }
     Ok(())
+}
+
+fn clean_game_talk_keys(keys: Vec<String>) -> Vec<String> {
+    let mut clean = Vec::new();
+    for key in keys {
+        let lower = key.trim().to_ascii_lowercase();
+        if is_valid_key_name(&lower) && !clean.iter().any(|old| old == &lower) {
+            clean.push(lower);
+        }
+        if clean.len() == 3 {
+            break;
+        }
+    }
+    if clean.is_empty() {
+        clean.push("v".to_string());
+    }
+    clean
+}
+
+fn non_empty_trimmed(value: &str) -> Option<String> {
+    let trimmed = value.trim();
+    (!trimmed.is_empty()).then(|| trimmed.to_string())
+}
+
+fn validate_main_talk_conflicts(settings: &Settings) -> Result<(), SettingsError> {
+    if let Some(talk) = settings.hotkeys.talk.as_deref() {
+        if main_hotkeys(settings)
+            .iter()
+            .any(|key| key.eq_ignore_ascii_case(talk))
+        {
+            return Err(SettingsError::Conflict(format!(
+                "Talk key {talk} conflicts with another Ringpad hotkey"
+            )));
+        }
+    }
+    for key in &settings.game_talk_keys {
+        if main_hotkeys(settings)
+            .iter()
+            .any(|main| main.eq_ignore_ascii_case(key))
+        {
+            return Err(SettingsError::Conflict(format!(
+                "Game talk key {key} conflicts with another Ringpad hotkey"
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn main_hotkeys(settings: &Settings) -> Vec<&str> {
+    [
+        settings.hotkeys.grab.as_deref(),
+        settings.hotkeys.send.as_deref(),
+        settings.hotkeys.send_alt.as_deref(),
+        settings.hotkeys.stop.as_deref(),
+        settings.hotkeys.save.as_deref(),
+    ]
+    .into_iter()
+    .flatten()
+    .collect()
 }
 
 fn replace_file(tmp: &Path, path: &Path) -> Result<(), std::io::Error> {
@@ -250,6 +386,13 @@ mod tests {
         assert!(settings.mic_enabled);
         assert!(!settings.relay_source);
         assert_eq!(settings.clip_retention_days, 7);
+        assert_eq!(settings.mic_mode, MicModeSetting::Open);
+        assert_eq!(settings.press_talk_keys, PressTalkKeysSetting::Off);
+        assert_eq!(settings.game_talk_keys, vec!["v"]);
+        assert_eq!(settings.talk_lead_ms, 100);
+        assert_eq!(settings.talk_tail_ms, 250);
+        assert_eq!(settings.talk_only_app, None);
+        assert_eq!(settings.hotkeys.talk, None);
     }
 
     #[test]
@@ -257,6 +400,13 @@ mod tests {
         let json = serde_json::to_string(&Settings::default()).expect("serialize settings");
         assert!(json.contains("sendVolume"));
         assert!(json.contains("sendAlt"));
+        assert!(json.contains("micMode"));
+        assert!(json.contains("pressTalkKeys"));
+        assert!(json.contains("gameTalkKeys"));
+        assert!(json.contains("talkLeadMs"));
+        assert!(json.contains("talkTailMs"));
+        assert!(json.contains("talkOnlyApp"));
+        assert!(json.contains("talk"));
         let back: Settings = serde_json::from_str(&json).expect("deserialize settings");
         assert_eq!(back, Settings::default());
     }
@@ -282,7 +432,11 @@ mod tests {
                 "monitorVolume": -1.0,
                 "historySeconds": 500.0,
                 "grabSeconds": 0.1,
-                "clipRetentionDays": 999
+                "clipRetentionDays": 999,
+                "talkLeadMs": 999,
+                "talkTailMs": 9999,
+                "talkOnlyApp": "  ",
+                "gameTalkKeys": ["V", "v", "nope", "f1", "f2", "f3"]
             }),
         )
         .expect("patch");
@@ -291,6 +445,10 @@ mod tests {
         assert_eq!(patched.history_seconds, 120.0);
         assert_eq!(patched.grab_seconds, 1.0);
         assert_eq!(patched.clip_retention_days, 365);
+        assert_eq!(patched.talk_lead_ms, 500);
+        assert_eq!(patched.talk_tail_ms, 2000);
+        assert_eq!(patched.talk_only_app, None);
+        assert_eq!(patched.game_talk_keys, vec!["v", "f1", "f2"]);
     }
 
     #[test]
@@ -301,6 +459,23 @@ mod tests {
         )
         .expect_err("invalid key");
         assert!(err.to_string().contains("Invalid key"));
+    }
+
+    #[test]
+    fn talk_conflicts_are_rejected() {
+        let err = apply_patch(
+            &Settings::default(),
+            serde_json::json!({"hotkeys": {"grab": "f8", "send": "f7", "sendAlt": "mouse5", "stop": "f9", "save": "f6", "talk": "f8"}}),
+        )
+        .expect_err("talk conflict");
+        assert!(err.to_string().contains("Talk key"));
+
+        let err = apply_patch(
+            &Settings::default(),
+            serde_json::json!({"gameTalkKeys": ["f7"]}),
+        )
+        .expect_err("game conflict");
+        assert!(err.to_string().contains("Game talk key"));
     }
 
     #[test]
@@ -328,6 +503,8 @@ mod tests {
         assert_eq!(loaded.hotkeys.grab.as_deref(), Some("g"));
         assert_eq!(loaded.hotkeys.send.as_deref(), Some("f7"));
         assert!(loaded.mic_enabled);
+        assert_eq!(loaded.mic_mode, MicModeSetting::Open);
+        assert_eq!(loaded.game_talk_keys, vec!["v"]);
         assert!(!dir.path().join("settings.json.bad").exists());
     }
 

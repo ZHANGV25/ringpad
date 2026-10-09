@@ -9,6 +9,7 @@ import type {
   Settings,
   SettingsPatch,
   Snapshot,
+  TalkState,
 } from './types'
 
 export type Unsubscribe = () => void
@@ -45,6 +46,7 @@ export interface EngineApi {
   playTestTone(): Promise<void>
   openExternal(args: { url: string }): Promise<void>
   openClipsFolder(): Promise<void>
+  testTalkKeys(): Promise<void>
   onStatus(handler: (status: EngineStatus) => void): Unsubscribe
   onMeters(handler: (meters: Meters) => void): Unsubscribe
   onLive(handler: (payload: { peaks: number[] }) => void): Unsubscribe
@@ -55,6 +57,7 @@ export interface EngineApi {
   onSettings(handler: (settings: Settings) => void): Unsubscribe
   onKeyCaptured(handler: (payload: { key: string }) => void): Unsubscribe
   onError(handler: (payload: { message: string }) => void): Unsubscribe
+  onTalk(handler: (talk: TalkState) => void): Unsubscribe
   onFileDrop(handler: (event: FileDropEvent) => void): Unsubscribe
   dispose?(): void
 }

@@ -38,6 +38,59 @@ describe('fake engine', () => {
     expect(patched.hotkeys.stop).toBeNull()
   })
 
+  it('tracks talk key state for push-to-talk and toggle modes', async () => {
+    const api = createFakeApi({ startTimers: false, settings: { micMode: 'pushToTalk', hotkeys: { talk: 't' } as never } })
+    const talk = vi.fn()
+    api.onTalk(talk)
+    expect((await api.getSnapshot()).talk.micOpen).toBe(false)
+
+    api.simulateKeyDown('t')
+    expect(talk.mock.lastCall?.[0]).toMatchObject({ micOpen: true })
+    api.simulateKeyUp('t')
+    expect(talk.mock.lastCall?.[0]).toMatchObject({ micOpen: false })
+
+    await api.updateSettings({ patch: { micMode: 'toggle' } })
+    api.simulateKey('t')
+    expect(talk.mock.lastCall?.[0]).toMatchObject({ micOpen: true })
+    api.simulateKey('t')
+    expect(talk.mock.lastCall?.[0]).toMatchObject({ micOpen: false })
+  })
+
+  it('holds game talk keys for tests, clips and pads', async () => {
+    vi.useFakeTimers()
+    const api = createFakeApi({ startTimers: false, settings: { pressTalkKeys: 'clips', gameTalkKeys: ['v', 'b'] } })
+    const talk = vi.fn()
+    api.onTalk(talk)
+    await api.testTalkKeys()
+    expect(talk.mock.lastCall?.[0].holding).toEqual(['v', 'b'])
+    vi.advanceTimersByTime(2000)
+    expect(talk.mock.lastCall?.[0].holding).toEqual([])
+
+    await api.grabClip()
+    await api.sendClip()
+    expect(talk.mock.lastCall?.[0].holding).toEqual(['v', 'b'])
+    vi.advanceTimersByTime(650)
+    expect(talk.mock.lastCall?.[0].holding).toEqual(['v', 'b'])
+    vi.advanceTimersByTime(250)
+    expect(talk.mock.lastCall?.[0].holding).toEqual([])
+  })
+
+  it('validates talk settings and reports conflicts', async () => {
+    const api = createFakeApi({ startTimers: false })
+    await expect(api.updateSettings({ patch: { talkLeadMs: -1 } })).rejects.toThrow('Head start must be between 0 and 500 ms.')
+    await expect(api.updateSettings({ patch: { talkTailMs: 2501 } })).rejects.toThrow('Release delay must be between 0 and 2000 ms.')
+    await expect(api.updateSettings({ patch: { gameTalkKeys: [] } })).rejects.toThrow('Choose 1 to 3 game keys.')
+    await expect(api.updateSettings({ patch: { gameTalkKeys: ['v', 'v'] } })).rejects.toThrow('Game keys must be unique.')
+    await expect(api.updateSettings({ patch: { hotkeys: { ...(await api.getSnapshot()).settings.hotkeys, talk: 'f8' } } })).rejects.toThrow(
+      'F8 is used by Clip.',
+    )
+    await expect(api.updateSettings({ patch: { gameTalkKeys: ['f9'] } })).rejects.toThrow('F9 is used by Stop.')
+    const settings = (await api.getSnapshot()).settings
+    await expect(api.updateSettings({ patch: { hotkeys: { ...settings.hotkeys, talk: 'v' } } })).resolves.toMatchObject({
+      hotkeys: { talk: 'v' },
+    })
+  })
+
   it('only reports a captured key while capturing', async () => {
     const api = createFakeApi({ startTimers: false })
     const handler = vi.fn()

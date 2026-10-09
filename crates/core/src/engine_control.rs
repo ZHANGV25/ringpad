@@ -185,6 +185,17 @@ impl EngineHandle {
         self.shared.ducking.store(enabled, Ordering::Release);
     }
 
+    /// Opens or closes the real-mic gate from the control thread.
+    pub fn set_mic_open(&self, open: bool) {
+        self.shared.mic_open.store(open, Ordering::Release);
+    }
+
+    /// Returns whether the real-mic gate is requested open.
+    #[must_use]
+    pub fn mic_open(&self) -> bool {
+        self.shared.mic_open.load(Ordering::Acquire)
+    }
+
     /// Returns true when the audio thread reports send playback.
     #[must_use]
     pub fn sending(&self) -> bool {
@@ -220,6 +231,7 @@ pub(crate) struct SharedState {
     pub(crate) send_volume: AtomicF32,
     pub(crate) duck_gain: AtomicF32,
     pub(crate) ducking: AtomicBool,
+    pub(crate) mic_open: AtomicBool,
     pub(crate) sending: AtomicBool,
     pub(crate) previewing: AtomicBool,
     pub(crate) source_peak: AtomicF32,
@@ -244,6 +256,7 @@ impl SharedState {
             send_volume: AtomicF32::new(send_volume),
             duck_gain: AtomicF32::new(duck_gain),
             ducking: AtomicBool::new(ducking),
+            mic_open: AtomicBool::new(true),
             sending: AtomicBool::new(false),
             previewing: AtomicBool::new(false),
             source_peak: AtomicF32::new(0.0),

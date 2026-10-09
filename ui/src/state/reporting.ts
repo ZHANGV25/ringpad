@@ -28,6 +28,7 @@ export function withReporting(api: EngineApi, report: Report, onDevices: OnDevic
     onSettings: (handler) => api.onSettings(handler),
     onKeyCaptured: (handler) => api.onKeyCaptured(handler),
     onError: (handler) => api.onError(handler),
+    onTalk: (handler) => api.onTalk(handler),
     onFileDrop: (handler) => api.onFileDrop(handler),
     dispose: () => api.dispose?.(),
     getSnapshot: () => guard(() => api.getSnapshot()),
@@ -56,5 +57,6 @@ export function withReporting(api: EngineApi, report: Report, onDevices: OnDevic
     playTestTone: () => guard(() => api.playTestTone()),
     openExternal: (args) => guard(() => api.openExternal(args)),
     openClipsFolder: () => guard(() => api.openClipsFolder()),
+    testTalkKeys: () => guard(() => api.testTalkKeys()),
   }
 }

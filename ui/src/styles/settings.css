@@ -78,6 +78,29 @@
   gap: 6px;
 }
 
+.talk-key-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.talk-key-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.talk-test-row {
+  align-items: center;
+}
+
+.inline-error {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 /* Hotkey rows: name, keycap, actions on one line. */
 .hotkey-list {
   display: flex;

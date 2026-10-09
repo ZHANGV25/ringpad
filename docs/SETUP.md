@@ -61,6 +61,17 @@ headphones, or you won't hear voice chat.
 Set the game's voice chat microphone to the cable's output, as above. If the game can send voice
 chat to its own output device, the spare-output setup above works the same way.
 
+## Push-to-talk games
+
+For games or Discord, set voice chat to voice activity on the cable when possible. Use a low
+threshold, and turn off noise suppression such as Krisp for the cable when the app lets you.
+
+Valorant team voice is push-to-talk only. In Ringpad, turn on **Press my game's talk key**, keep
+the key as **V** if that is your Valorant team key, and optionally limit it to
+`VALORANT-Win64-Shipping.exe` so the key is pressed only while Valorant is foreground.
+
+If the key never registers and the game runs as administrator, run Ringpad as administrator too.
+
 ## Fixing problems
 
 **Teammates don't hear clips.** Check the "Out" meter moves when you press F7. If it does, the

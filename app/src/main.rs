@@ -12,6 +12,7 @@ mod pump;
 mod retention;
 mod runtime;
 mod settings;
+mod talk;
 mod tray;
 
 use std::sync::atomic::Ordering;
@@ -51,6 +52,7 @@ fn main() {
             commands::begin_key_capture,
             commands::cancel_key_capture,
             commands::play_test_tone,
+            commands::test_talk_keys,
             commands::open_external,
             commands::open_clips_folder
         ]);
@@ -70,6 +72,10 @@ fn main() {
                 .is_some_and(|state| state.quit.load(Ordering::Acquire));
             if !should_quit {
                 api.prevent_exit();
+            } else if let Some(state) = app.try_state::<AppState>() {
+                if let Ok(mut talk) = state.talk.lock() {
+                    talk.release_all();
+                }
             }
         }
     });
@@ -78,6 +84,7 @@ fn main() {
 fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let handle = app.handle().clone();
     let paths = paths::AppPaths::resolve(&handle)?;
+    talk::release_crash_marker(&paths.data_dir);
     let settings = settings::load(&paths.settings_json)?;
     let pads = pads_store::PadsStore::load(&paths.pads_json)?;
     let start_minimized = settings.start_minimized || launched_minimized();

@@ -27,6 +27,7 @@ describe('settings tabs', () => {
   it('switches tabs by click and by arrow keys, and goes back', async () => {
     await openSettings()
     const tabs = screen.getByRole('tablist', { name: 'Settings sections' })
+    expect(within(tabs).getAllByRole('tab').map((item) => item.textContent)).toEqual(['Audio', 'Talk', 'Hotkeys', 'Pads', 'General', 'About'])
     expect(screen.getByRole('tab', { name: 'Audio' }).getAttribute('aria-selected')).toBe('true')
 
     fireEvent.keyDown(tabs, { key: 'ArrowLeft' })
@@ -124,6 +125,95 @@ describe('audio tab', () => {
     await openSettings()
     fireEvent.click(screen.getByRole('button', { name: 'Play test tone' }))
     await waitFor(() => expect(screen.getByRole('meter', { name: 'Out' }).getAttribute('aria-valuenow')).toBe('92'))
+  })
+})
+
+describe('talk tab', () => {
+  async function openTalk(api: FakeEngineApi = makeApi()): Promise<FakeEngineApi> {
+    const opened = await openSettings(api)
+    openTab('Talk')
+    return opened
+  }
+
+  it('renders mic modes and writes the selected mode', async () => {
+    const api = await openTalk()
+    const update = vi.spyOn(api, 'updateSettings')
+    fireEvent.click(screen.getByRole('tab', { name: 'Hold a key' }))
+    await waitFor(async () => expect((await settingsOf(api)).micMode).toBe('pushToTalk'))
+    expect(update).toHaveBeenLastCalledWith({ patch: { micMode: 'pushToTalk' } })
+    expect(screen.getByText('Pick a talk key. Until then your mic stays off.')).toBeTruthy()
+    expect(screen.getByText('Clips always play. Set Discord or your game to voice activity on the Ringpad cable.')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Press to toggle' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Clips and my mic' }))
+    await waitFor(() => expect(screen.getByText('Your talk key then works as a toggle for the game too.')).toBeTruthy())
+    fireEvent.click(screen.getByRole('tab', { name: 'Always on' }))
+    await waitFor(() => expect(screen.getByText('Choose Hold a key or Press to toggle above for your mic to count.')).toBeTruthy())
+  })
+
+  it('sets the talk key with the existing key capture flow', async () => {
+    const api = await openTalk(makeApi({ settings: { micMode: 'pushToTalk' } }))
+    fireEvent.click(within(row('Talk key')).getByRole('button', { name: 'Change' }))
+    expect(within(row('Talk key')).getByText('Press a key')).toBeTruthy()
+    act(() => api.simulateKey('t'))
+    await waitFor(async () => expect((await settingsOf(api)).hotkeys.talk).toBe('t'))
+    expect(within(row('Talk key')).getByText('T')).toBeTruthy()
+  })
+
+  it('adds and removes game keys with a three-key limit', async () => {
+    const api = await openTalk()
+    fireEvent.click(screen.getByRole('tab', { name: 'While a clip plays' }))
+    expect((screen.getByRole('button', { name: 'Remove V' }) as HTMLButtonElement).disabled).toBe(true)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add key' }))
+    act(() => api.simulateKey('b'))
+    await waitFor(async () => expect((await settingsOf(api)).gameTalkKeys).toEqual(['v', 'b']))
+    expect((screen.getByRole('button', { name: 'Remove V' }) as HTMLButtonElement).disabled).toBe(false)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove V' }))
+    await waitFor(async () => expect((await settingsOf(api)).gameTalkKeys).toEqual(['b']))
+    expect((screen.getByRole('button', { name: 'Remove B' }) as HTMLButtonElement).disabled).toBe(true)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add key' }))
+    act(() => api.simulateKey('c'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Add key' }))
+    act(() => api.simulateKey('d'))
+    await waitFor(async () => expect((await settingsOf(api)).gameTalkKeys).toEqual(['b', 'c', 'd']))
+    expect(screen.queryByRole('button', { name: 'Add key' })).toBeNull()
+  })
+
+  it('writes lead and tail sliders', async () => {
+    const api = await openTalk()
+    fireEvent.click(screen.getByRole('tab', { name: 'While a clip plays' }))
+    fireEvent.change(screen.getByRole('slider', { name: 'Head start' }), { target: { value: '220' } })
+    fireEvent.change(screen.getByRole('slider', { name: 'Release delay' }), { target: { value: '600' } })
+    await waitFor(async () => expect(await settingsOf(api)).toMatchObject({ talkLeadMs: 220, talkTailMs: 600 }))
+    expect(screen.getByText('220 ms')).toBeTruthy()
+    expect(screen.getByText('600 ms')).toBeTruthy()
+  })
+
+  it('lists apps for talk limiting and writes Any app as null', async () => {
+    const api = await openTalk(makeApi({ settings: { talkOnlyApp: 'ClosedGame.exe' } }))
+    fireEvent.click(screen.getByRole('tab', { name: 'While a clip plays' }))
+    const select = screen.getByRole('combobox', { name: 'Only when this app is in front' }) as HTMLSelectElement
+    expect(await within(select).findByRole('option', { name: 'Discord' })).toBeTruthy()
+    expect(within(select).getByRole('option', { name: 'ClosedGame.exe' })).toBeTruthy()
+    fireEvent.change(select, { target: { value: 'VALORANT-Win64-Shipping.exe' } })
+    await waitFor(async () => expect((await settingsOf(api)).talkOnlyApp).toBe('VALORANT-Win64-Shipping.exe'))
+    fireEvent.change(select, { target: { value: '' } })
+    await waitFor(async () => expect((await settingsOf(api)).talkOnlyApp).toBeNull())
+  })
+
+  it('tests the game keys, shows holding text and blocked errors', async () => {
+    const api = await openTalk()
+    fireEvent.click(screen.getByRole('tab', { name: 'While a clip plays' }))
+    const test = vi.spyOn(api, 'testTalkKeys')
+    fireEvent.click(screen.getByRole('button', { name: 'Test' }))
+    expect(test).toHaveBeenCalledOnce()
+    expect(await screen.findByText('Holding V')).toBeTruthy()
+    act(() => api.simulateTalkBlocked('Windows blocked VALORANT. Run Ringpad as administrator.'))
+    expect(screen.getByRole('alert').textContent).toBe('Windows blocked VALORANT. Run Ringpad as administrator.')
+    api.dispose()
   })
 })
 

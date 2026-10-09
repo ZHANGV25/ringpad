@@ -62,10 +62,12 @@ describe('withReporting', () => {
     await api.playTestTone()
     await api.openExternal({ url: 'https://example.com' })
     await api.openClipsFolder()
+    await api.testTalkKeys()
     expect(report).not.toHaveBeenCalled()
     expect(fake.lastPad()).toBe(0)
     expect(fake.openedUrl).toBe('https://example.com')
     expect(fake.clipsFolderOpened).toBe(true)
+    fake.dispose()
   })
 
   it('forwards every event subscription and dispose', () => {
@@ -82,15 +84,17 @@ describe('withReporting', () => {
       api.onSettings(handler),
       api.onKeyCaptured(handler),
       api.onError(handler),
+      api.onTalk(handler),
       api.onFileDrop(handler),
     ]
     fake.emitError('x')
+    fake.simulateTalkBlocked('blocked')
     fake.emitFileDrop({ type: 'leave' })
     fake.simulateStatus({ kind: 'starting' })
-    expect(handler).toHaveBeenCalledTimes(3)
+    expect(handler).toHaveBeenCalledTimes(4)
     offs.forEach((off) => off())
     fake.emitError('y')
-    expect(handler).toHaveBeenCalledTimes(3)
+    expect(handler).toHaveBeenCalledTimes(4)
     const dispose = vi.spyOn(fake, 'dispose')
     api.dispose?.()
     expect(dispose).toHaveBeenCalledOnce()

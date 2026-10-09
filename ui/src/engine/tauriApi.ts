@@ -15,6 +15,7 @@ import type {
   Settings,
   SettingsPatch,
   Snapshot,
+  TalkState,
 } from './types'
 
 function command<T>(name: string, args?: Record<string, unknown>): Promise<T> {
@@ -61,6 +62,7 @@ export const tauriApi: EngineApi = {
   playTestTone: () => command<void>('play_test_tone'),
   openExternal: (args: { url: string }) => command<void>('open_external', args),
   openClipsFolder: () => command<void>('open_clips_folder'),
+  testTalkKeys: () => command<void>('test_talk_keys'),
   onStatus: (handler: (status: EngineStatus) => void) => event('status', handler),
   onMeters: (handler: (meters: Meters) => void) => event('meters', handler),
   onLive: (handler: (payload: { peaks: number[] }) => void) => event('live', handler),
@@ -71,6 +73,7 @@ export const tauriApi: EngineApi = {
   onSettings: (handler: (settings: Settings) => void) => event('settings', handler),
   onKeyCaptured: (handler: (payload: { key: string }) => void) => event('key-captured', handler),
   onError: (handler: (payload: { message: string }) => void) => event('error', handler),
+  onTalk: (handler: (talk: TalkState) => void) => event('talk', handler),
   onFileDrop(handler: (eventPayload: FileDropEvent) => void): Unsubscribe {
     return normalizeAsyncUnlisten(
       getCurrentWebview().onDragDropEvent((eventPayload) => handler(dragEvent(eventPayload.payload))),

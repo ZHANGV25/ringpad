@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::command_support::{playback_from_session, LivePayload};
+use crate::command_support::{emit_talk, playback_from_session, LivePayload};
 use crate::dto::{self, EngineStatus, Playback};
 use crate::runtime::AppState;
 
@@ -53,6 +53,14 @@ fn pump_loop(app: AppHandle) {
         if last_playback != Some(playback) {
             last_playback = Some(playback);
             let _ = app.emit("playback", playback);
+        }
+        let talk = state
+            .talk
+            .lock()
+            .ok()
+            .and_then(|mut talk| talk.tick(crate::commands::now_seconds(), playback.sending));
+        if let Some(talk) = talk {
+            emit_talk(&app, state.inner(), talk);
         }
         if Instant::now() >= next_live {
             next_live = Instant::now() + Duration::from_millis(100);

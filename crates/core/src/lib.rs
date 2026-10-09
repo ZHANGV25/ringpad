@@ -17,6 +17,7 @@ pub mod history;
 pub mod keys;
 pub mod pads;
 pub mod player;
+pub mod talk;
 
 /// Version of the engine, shown in the About page.
 pub fn version() -> &'static str {

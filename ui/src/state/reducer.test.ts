@@ -13,6 +13,7 @@ function sampleSnapshot(): Snapshot {
     pads: makeEmptyPads(),
     playback: { sending: false, previewing: false, saveArmed: false },
     virtualCaptureHint: null,
+    talk: { micOpen: true, holding: [], blocked: null },
   }
 }
 
@@ -35,6 +36,7 @@ describe('engineReducer', () => {
       { type: 'clip' as const, clip: { id: 'c', seconds: 2, peaks: [0.1], savedPath: null } },
       { type: 'pads' as const, pads: makeEmptyPads() },
       { type: 'playback' as const, playback: { sending: true, previewing: false, saveArmed: false } },
+      { type: 'talk' as const, talk: { micOpen: false, holding: ['v'], blocked: null } },
       { type: 'live' as const, peaks: [0.2, 0.3] },
       { type: 'error' as const, id: 1, message: 'Nope' },
     ]
