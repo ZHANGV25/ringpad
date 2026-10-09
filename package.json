@@ -1,0 +1,17 @@
+{
+  "name": "ringpad",
+  "private": true,
+  "license": "MIT",
+  "workspaces": [
+    "ui"
+  ],
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "test": "npm test --workspace ui"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.12.1"
+  }
+}

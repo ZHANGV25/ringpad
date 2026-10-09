@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = ["crates/core", "crates/windows", "app"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/ZHANGV25/ringpad"
+rust-version = "1.80"
+
+[workspace.dependencies]
+ringpad-core = { path = "crates/core" }
+ringpad-windows = { path = "crates/windows" }

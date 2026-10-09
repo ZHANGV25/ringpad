@@ -1,0 +1,11 @@
+[package]
+name = "ringpad-windows"
+description = "Ringpad's Windows backend: WASAPI capture and playback, per-app capture, Raw Input hotkeys"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+ringpad-core.workspace = true

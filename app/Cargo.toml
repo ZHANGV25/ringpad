@@ -1,0 +1,18 @@
+[package]
+name = "ringpad"
+description = "Ringpad: a Windows soundboard with instant replay for voice chat"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ringpad-core.workspace = true
+ringpad-windows.workspace = true

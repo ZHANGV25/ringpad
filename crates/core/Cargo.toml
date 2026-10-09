@@ -1,0 +1,10 @@
+[package]
+name = "ringpad-core"
+description = "Ringpad audio engine: ring buffer, clips, pads, and mixing, with no OS code"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
