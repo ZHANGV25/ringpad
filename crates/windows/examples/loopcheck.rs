@@ -18,6 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         send_volume: 1.0,
         monitor_volume: 0.0,
         ducking: false,
+        history_seconds: 30.0,
     };
     let (_service, mut handle) = AudioService::start(config)?;
 

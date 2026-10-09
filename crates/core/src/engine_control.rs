@@ -7,7 +7,9 @@ use rtrb::{Consumer, Producer};
 use thiserror::Error;
 
 use crate::clip::Clip;
-use crate::engine::{DUCK_GAIN, FIFO_MAX_SECONDS, FIFO_PRIME_SECONDS, MONITOR_VOLUME, SEND_VOLUME};
+use crate::engine::{
+    DUCK_GAIN, FIFO_MAX_SECONDS, FIFO_PRIME_SECONDS, HISTORY_SECONDS, MONITOR_VOLUME, SEND_VOLUME,
+};
 use crate::fifo::SampleFifo;
 use crate::history::History;
 
@@ -36,6 +38,8 @@ pub struct EngineConfig {
     pub duck_gain: f32,
     /// Whether mic ducking starts enabled.
     pub ducking: bool,
+    /// Rolling history length in seconds (clamped to 10..=120 by the engine).
+    pub history_seconds: f32,
 }
 
 impl EngineConfig {
@@ -59,6 +63,7 @@ impl EngineConfig {
             recording_headphones: false,
             duck_gain: DUCK_GAIN,
             ducking: true,
+            history_seconds: HISTORY_SECONDS,
         }
     }
 }

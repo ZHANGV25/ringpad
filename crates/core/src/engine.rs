@@ -15,6 +15,10 @@ use crate::player::ClipPlayer;
 
 /// Default rolling history length in seconds.
 pub const HISTORY_SECONDS: f32 = 30.0;
+/// Shortest allowed rolling history in seconds.
+pub const MIN_HISTORY_SECONDS: f32 = 10.0;
+/// Longest allowed rolling history in seconds.
+pub const MAX_HISTORY_SECONDS: f32 = 120.0;
 /// Default headphone monitor volume.
 pub const MONITOR_VOLUME: f32 = 0.6;
 /// Default virtual-mic send volume.
@@ -69,7 +73,9 @@ impl Engine {
         let (command_tx, command_rx) = RingBuffer::new(COMMAND_CAPACITY);
         let (retired_tx, retired_rx) = RingBuffer::new(RETIRED_CAPACITY);
         let shared = Arc::new(SharedState::new(
-            HISTORY_SECONDS,
+            config
+                .history_seconds
+                .clamp(MIN_HISTORY_SECONDS, MAX_HISTORY_SECONDS),
             rate,
             config.monitor_volume,
             config.send_volume,

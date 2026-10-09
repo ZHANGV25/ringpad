@@ -277,3 +277,19 @@ fn retired_clip_is_freed_by_collect_garbage_not_audio_thread() {
     handle.collect_garbage();
     assert_eq!(Arc::strong_count(&first), 1);
 }
+
+#[test]
+fn history_length_follows_the_config_within_limits() {
+    let mut config = EngineConfig::new(1_000, 1_000, None, 1_000);
+    config.history_seconds = 45.0;
+    let (_engine, handle) = Engine::new(config.clone());
+    assert_eq!(handle.history().capacity(), 45_000);
+
+    config.history_seconds = 2.0;
+    let (_engine, handle) = Engine::new(config.clone());
+    assert_eq!(handle.history().capacity(), 10_000);
+
+    config.history_seconds = 500.0;
+    let (_engine, handle) = Engine::new(config);
+    assert_eq!(handle.history().capacity(), 120_000);
+}

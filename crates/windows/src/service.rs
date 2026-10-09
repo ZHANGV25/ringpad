@@ -48,6 +48,8 @@ pub struct ServiceConfig {
     pub monitor_volume: f32,
     /// Whether mic ducking is enabled.
     pub ducking: bool,
+    /// Rolling history length in seconds.
+    pub history_seconds: f32,
 }
 
 impl ServiceConfig {
@@ -71,6 +73,7 @@ impl ServiceConfig {
         config.send_volume = self.send_volume;
         config.monitor_volume = self.monitor_volume;
         config.ducking = self.ducking;
+        config.history_seconds = self.history_seconds;
         config
     }
 }

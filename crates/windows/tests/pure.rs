@@ -207,6 +207,7 @@ fn service_config(source: SourceSpec, headphones: Option<&str>) -> ServiceConfig
         send_volume: 0.5,
         monitor_volume: 0.6,
         ducking: true,
+        history_seconds: 45.0,
     }
 }
 
@@ -238,4 +239,5 @@ fn echo_gate_turns_on_only_when_the_source_records_the_headphones() {
     let config = no_monitor.engine_config(Some("phones"));
     assert!(!config.recording_headphones);
     assert!(!config.monitoring);
+    assert_eq!(config.history_seconds, 45.0);
 }
