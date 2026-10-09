@@ -1,0 +1,48 @@
+name: Bug report
+description: Something doesn't work the way it should.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Record from Discord
+        2. Press F8, then F7
+        3. ...
+  - type: input
+    id: version
+    attributes:
+      label: Ringpad version
+      description: Settings > About.
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: Windows 11 24H2
+  - type: input
+    id: cable
+    attributes:
+      label: Virtual cable
+      placeholder: VB-CABLE, Voicemod, VoiceMeeter
+  - type: input
+    id: app
+    attributes:
+      label: Game or voice app
+      placeholder: Discord, Valorant
+  - type: textarea
+    id: devices
+    attributes:
+      label: Device list (for audio problems)
+      description: Output of `cargo run -p ringpad-windows --example probe` if you build from source, or a screenshot of Settings > Audio.
+      render: text
