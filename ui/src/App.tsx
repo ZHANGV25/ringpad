@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
+import { flushSync } from 'react-dom'
 import type { EngineApi } from './engine/api'
+import { reducedMotion } from './components/panda/motion'
 import { EngineProvider, useEngine } from './state/EngineProvider'
 import { FirstRun } from './views/FirstRun'
 import { MainWindow } from './views/MainWindow'
@@ -17,9 +19,34 @@ export function App({ api }: Props) {
   )
 }
 
+type View = 'main' | 'settings'
+
+type TransitionDocument = Document & { startViewTransition?: (update: () => void) => { finished: Promise<void> } }
+
+/**
+ * Moving between the main window and settings. The browser snapshots both pages and slides one
+ * into the other on the compositor (app.css, view transitions): settings comes in from the right,
+ * and Back returns the way it came.
+ */
+function useView(): [View, (next: View) => void] {
+  const [view, setView] = useState<View>('main')
+  const go = useCallback((next: View) => {
+    const doc = document as TransitionDocument
+    if (typeof doc.startViewTransition !== 'function' || reducedMotion()) {
+      setView(next)
+      return
+    }
+    const root = document.documentElement
+    root.dataset.nav = next === 'settings' ? 'forward' : 'back'
+    const transition = doc.startViewTransition(() => flushSync(() => setView(next)))
+    void transition.finished.finally(() => delete root.dataset.nav)
+  }, [])
+  return [view, go]
+}
+
 function AppShell() {
   const { state } = useEngine()
-  const [view, setView] = useState<'main' | 'settings'>('main')
+  const [view, setView] = useView()
   return (
     <>
       <AppView view={view} setView={setView} />
@@ -33,8 +60,8 @@ function AppShell() {
 }
 
 interface AppViewProps {
-  view: 'main' | 'settings'
-  setView: (view: 'main' | 'settings') => void
+  view: View
+  setView: (view: View) => void
 }
 
 function AppView({ view, setView }: AppViewProps) {

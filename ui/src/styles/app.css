@@ -593,3 +593,31 @@ input[type='range']::-moz-range-thumb {
     animation-name: fade-in;
   }
 }
+
+/* Between the main window and settings (App.tsx): the old page steps aside and fades quickly, the
+   new one slides the last few pixels in, so the two never sit on top of each other for long. */
+::view-transition-old(root) {
+  animation: var(--dur-fast) var(--ease-in-out) both nav-old;
+}
+
+::view-transition-new(root) {
+  animation: var(--dur-move) var(--ease-out) 40ms both nav-new;
+}
+
+:root[data-nav='forward'] {
+  --nav-old: -24px;
+  --nav-new: 24px;
+}
+
+:root[data-nav='back'] {
+  --nav-old: 24px;
+  --nav-new: -24px;
+}
+
+@keyframes nav-old {
+  to { opacity: 0; transform: translateX(var(--nav-old, 0)); }
+}
+
+@keyframes nav-new {
+  from { opacity: 0; transform: translateX(var(--nav-new, 0)); }
+}
