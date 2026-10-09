@@ -28,7 +28,11 @@ fn pump_loop(app: AppHandle) {
         if state.quit.load(std::sync::atomic::Ordering::Acquire) {
             break;
         }
-        let window_exists = app.get_webview_window("main").is_some();
+        // Meters and peaks only go to a window someone can see.
+        let window_awake = app.get_webview_window(crate::tray::MAIN_LABEL).is_some()
+            && state
+                .window_awake
+                .load(std::sync::atomic::Ordering::Acquire);
         let history_seconds = match state.settings.lock() {
             Ok(settings) => settings.history_seconds,
             Err(_) => 30.0,
@@ -47,7 +51,7 @@ fn pump_loop(app: AppHandle) {
                 .max(1.0) as usize;
             (meters, playback, peak, live_len)
         };
-        if window_exists {
+        if window_awake {
             let _ = app.emit("meters", meters);
         }
         if last_playback != Some(playback) {
@@ -69,7 +73,7 @@ fn pump_loop(app: AppHandle) {
                 let remove = live.len() - live_len;
                 live.drain(0..remove);
             }
-            if window_exists {
+            if window_awake {
                 let _ = app.emit(
                     "live",
                     LivePayload {

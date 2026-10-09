@@ -97,6 +97,8 @@ pub struct Playback {
     pub previewing: bool,
     /// Save-arm is active.
     pub save_armed: bool,
+    /// The pad (0-based) being sent, or `None` when the clip is (or nothing is).
+    pub pad: Option<usize>,
 }
 
 /// Talk state for the UI.

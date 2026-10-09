@@ -4,11 +4,13 @@ use std::sync::atomic::Ordering;
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Manager, WebviewWindowBuilder};
+use tauri::window::Color;
+use tauri::{AppHandle, Manager, Theme, WebviewWindow, WebviewWindowBuilder};
 
 use crate::runtime::AppState;
+use crate::settings::ThemePreference;
 
-const MAIN_LABEL: &str = "main";
+pub const MAIN_LABEL: &str = "main";
 const OPEN_ID: &str = "open-ringpad";
 const STOP_ID: &str = "stop-playback";
 const QUIT_ID: &str = "quit-ringpad";
@@ -65,12 +67,42 @@ pub fn open_main_window(app: &AppHandle) {
         log::warn!("main window config missing");
         return;
     };
-    match WebviewWindowBuilder::from_config(app, &config).and_then(|builder| builder.build()) {
+    // Built hidden, so it can take the page's background colour before it first shows: no white
+    // flash when the app is dark.
+    match WebviewWindowBuilder::from_config(app, &config)
+        .and_then(|builder| builder.visible(false).build())
+    {
         Ok(window) => {
+            paint_background(app, &window);
             let _ = window.show();
             let _ = window.set_focus();
         }
         Err(error) => log::warn!("open window failed: {error}"),
+    }
+}
+
+/// Matches the window to the UI's background (styles/tokens.css --bg) for the chosen theme.
+fn paint_background(app: &AppHandle, window: &WebviewWindow) {
+    let preference = app
+        .state::<AppState>()
+        .settings
+        .lock()
+        .map(|settings| settings.theme.clone())
+        .unwrap_or(ThemePreference::System);
+    let system = window.theme().unwrap_or(Theme::Light);
+    let _ = window.set_background_color(Some(background_for(&preference, system)));
+}
+
+fn background_for(preference: &ThemePreference, system: Theme) -> Color {
+    let dark = match preference {
+        ThemePreference::Dark => true,
+        ThemePreference::Light => false,
+        ThemePreference::System => system == Theme::Dark,
+    };
+    if dark {
+        Color(0x0e, 0x0e, 0x0e, 0xff)
+    } else {
+        Color(0xff, 0xff, 0xff, 0xff)
     }
 }
 
@@ -88,4 +120,22 @@ fn quit(app: &AppHandle) {
     state.quit.store(true, Ordering::Release);
     state.runtime.stop_all();
     app.exit(0);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn background_follows_the_chosen_theme_then_the_system() {
+        let dark = Color(0x0e, 0x0e, 0x0e, 0xff);
+        let light = Color(0xff, 0xff, 0xff, 0xff);
+        assert_eq!(background_for(&ThemePreference::Dark, Theme::Light), dark);
+        assert_eq!(background_for(&ThemePreference::Light, Theme::Dark), light);
+        assert_eq!(background_for(&ThemePreference::System, Theme::Dark), dark);
+        assert_eq!(
+            background_for(&ThemePreference::System, Theme::Light),
+            light
+        );
+    }
 }

@@ -31,6 +31,8 @@ pub struct AppState {
     pub key_capture: AtomicBool,
     /// Whether Quit was explicitly requested.
     pub quit: AtomicBool,
+    /// False while the main window is minimized: its webview sleeps and gets no meters or peaks.
+    pub window_awake: AtomicBool,
     /// Monotonic clip id fallback.
     pub clip_counter: AtomicU64,
     /// Last captured clip DTO.
@@ -90,6 +92,7 @@ impl AppState {
             }),
             key_capture: AtomicBool::new(false),
             quit: AtomicBool::new(false),
+            window_awake: AtomicBool::new(true),
             clip_counter: AtomicU64::new(0),
             last_clip: Mutex::new(None),
             status: Mutex::new(EngineStatus::Starting),

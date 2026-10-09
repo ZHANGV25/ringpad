@@ -62,10 +62,15 @@ pub fn emit_error(app: &AppHandle, message: impl Into<String>) {
 /// Builds playback from a session.
 #[must_use]
 pub fn playback_from_session(session: &ringpad_core::actions::Session) -> Playback {
+    let sending = session.handle.sending();
     Playback {
-        sending: session.handle.sending(),
+        sending,
         previewing: session.handle.previewing(),
         save_armed: session.arm.is_armed(now_seconds()),
+        pad: session
+            .playing_pad
+            .filter(|_| sending)
+            .and_then(|slot| slot.checked_sub(1)),
     }
 }
 

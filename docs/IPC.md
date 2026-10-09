@@ -32,7 +32,7 @@ Talk settings and defaults: `micMode` `open`; `pressTalkKeys` `off`; `gameTalkKe
 
 `Meters`: `source`, `mic`, `outgoing`, each `0` to `1`.
 
-`Playback`: `sending`, `previewing`, `saveArmed`.
+`Playback`: `sending`, `previewing`, `saveArmed`, `pad` (the 0-based pad being sent, or `null` when the clip is or nothing is).
 
 `Snapshot`: version, backend, status, settings, devices, clip, pads, playback, virtualCaptureHint, talk.
 

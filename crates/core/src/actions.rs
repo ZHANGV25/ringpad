@@ -118,6 +118,8 @@ pub struct Session {
     pub clips_dir: Option<PathBuf>,
     /// Optional directory for saved pads.
     pub slots_dir: Option<PathBuf>,
+    /// The pad (1-based) the send player last started, or `None` when it last started the clip.
+    pub playing_pad: Option<usize>,
 }
 
 impl Session {
@@ -131,6 +133,7 @@ impl Session {
             seconds: DEFAULT_GRAB_SECONDS,
             clips_dir: None,
             slots_dir: None,
+            playing_pad: None,
         }
     }
 }
@@ -163,6 +166,7 @@ pub fn grab(session: &mut Session) -> Result<ActionEvent, ActionError> {
 /// Stops both the send and preview players.
 pub fn stop_all(session: &mut Session) -> Result<ActionEvent, ActionError> {
     session.handle.stop_all()?;
+    session.playing_pad = None;
     Ok(ActionEvent::Stopped)
 }
 
@@ -173,6 +177,7 @@ pub fn send_last(session: &mut Session) -> Result<ActionEvent, ActionError> {
     }
     session.handle.stop_preview()?;
     session.handle.replay_send_clip()?;
+    session.playing_pad = None;
     Ok(ActionEvent::SendingClip)
 }
 
@@ -228,6 +233,7 @@ pub fn play_pad(session: &mut Session, slot: usize) -> Result<ActionEvent, Actio
         let scaled: Vec<f32> = pad.clip.iter().map(|sample| sample * pad.volume).collect();
         session.handle.play_send_clip(clip_from_vec(scaled))?;
     }
+    session.playing_pad = Some(slot);
     Ok(ActionEvent::PlayingPad { slot })
 }
 

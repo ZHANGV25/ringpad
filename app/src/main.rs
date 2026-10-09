@@ -14,6 +14,7 @@ mod runtime;
 mod settings;
 mod talk;
 mod tray;
+mod window_state;
 
 use std::sync::atomic::Ordering;
 use std::thread;
@@ -33,6 +34,7 @@ fn main() {
         ))
         .plugin(tauri_plugin_opener::init())
         .setup(setup)
+        .on_window_event(window_state::on_window_event)
         .invoke_handler(tauri::generate_handler![
             commands::get_snapshot,
             commands::list_devices,

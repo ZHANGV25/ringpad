@@ -317,6 +317,29 @@ fn pad_volume_scales_playback() {
 }
 
 #[test]
+fn session_remembers_whether_a_pad_or_the_clip_is_going_out() {
+    let tmp = temp_dir("playing-pad");
+    let (_engine, mut session) = make_session(tmp, false, false);
+    session
+        .pads
+        .store(3, clip(&voice(0.5, 0.3)), "three")
+        .expect("store");
+    assert_eq!(session.playing_pad, None);
+    play_pad(&mut session, 3).expect("play");
+    assert_eq!(session.playing_pad, Some(3));
+    stop_all(&mut session).expect("stop");
+    assert_eq!(session.playing_pad, None);
+
+    play_pad(&mut session, 3).expect("play");
+    session
+        .handle
+        .load_send_clip(clip(&voice(0.5, 0.2)))
+        .expect("load");
+    send_last(&mut session).expect("send");
+    assert_eq!(session.playing_pad, None);
+}
+
+#[test]
 fn save_current_to_pad_can_be_called_directly() {
     let tmp = temp_dir("direct-save");
     let (_engine, mut session) = make_session(tmp.clone(), false, false);
