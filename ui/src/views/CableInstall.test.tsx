@@ -39,7 +39,7 @@ describe('installing VB-CABLE', () => {
     const busy = screen.getByRole('button', { name: 'Installing…' }) as HTMLButtonElement
     expect(busy.disabled).toBe(true)
     expect((screen.getByRole('button', { name: 'Check again' }) as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getByRole('status').textContent).toMatch(/Windows asks twice/)
+    expect(screen.getByRole('status').textContent).toMatch(/Windows asks for admin rights/)
 
     await act(async () => release())
     expect(await screen.findByRole('combobox', { name: 'Virtual mic' })).toBeTruthy()

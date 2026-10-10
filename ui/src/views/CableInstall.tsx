@@ -83,7 +83,7 @@ export function SwitchToVbCable() {
 
 function InstallNote({ phase }: { phase: Phase }) {
   let note = ''
-  if (phase.kind === 'installing') note = "Windows asks twice: for admin rights, then to install VB-Audio's driver. Say yes to both."
+  if (phase.kind === 'installing') note = "Windows asks for admin rights, and may ask to install VB-Audio's driver. Say yes."
   if (phase.kind === 'stopped') note = STOPPED_NOTES[phase.outcome]
   if (phase.kind === 'failed') note = phase.message
   return (
