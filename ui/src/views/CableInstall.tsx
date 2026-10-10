@@ -12,12 +12,15 @@ type Phase =
   | { kind: 'failed'; message: string }
 
 const STOPPED_NOTES: Record<Exclude<CableInstall, 'installed'>, string> = {
-  declined: 'Windows needs your OK to add the cable. Press Install VB-CABLE again when you are ready.',
-  needsRestart: "Setup finished, but Windows hasn't added the cable yet. If you allowed the driver, restart your PC to finish.",
+  declined: 'Windows needs a Yes. Try again.',
+  needsRestart: 'Restart your PC to finish.',
 }
 
+/** Said before the click: Windows' prompt dims the screen, so the app can't explain it while it shows. */
+export const CLICK_YES = 'Windows will ask. Click Yes.'
+
 /** Installs the VB-CABLE that ships with Ringpad, then plays clips into it. */
-function useCableInstall() {
+export function useCableInstall() {
   const { api } = useEngine()
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' })
   const start = () => {
@@ -49,10 +52,8 @@ export function NoCableCallout() {
   const { phase, start, busy } = useCableInstall()
   return (
     <div className="callout" aria-busy={busy}>
-      <strong>No virtual cable found</strong>
-      <span className="hint">
-        Windows only lets an app add a microphone through a virtual cable. Ringpad comes with VB-CABLE, a free one.
-      </span>
+      <strong>No virtual mic yet</strong>
+      <span className="hint">Ringpad plays clips through a virtual mic. It comes with a free one, VB-CABLE.</span>
       <div className="row-actions">
         <button type="button" className="button small primary" disabled={busy} onClick={start}>
           {busy ? 'Installing…' : 'Install VB-CABLE'}
@@ -61,6 +62,7 @@ export function NoCableCallout() {
           Check again
         </button>
       </div>
+      <span className="hint">{CLICK_YES}</span>
       <InstallNote phase={phase} />
       <VbCableCredit />
     </div>
@@ -81,9 +83,9 @@ export function SwitchToVbCable() {
   )
 }
 
-function InstallNote({ phase }: { phase: Phase }) {
+/** What came of the last try. Empty while installing: the button says so. */
+export function InstallNote({ phase }: { phase: Phase }) {
   let note = ''
-  if (phase.kind === 'installing') note = "Windows asks for admin rights, and may ask to install VB-Audio's driver. Say yes."
   if (phase.kind === 'stopped') note = STOPPED_NOTES[phase.outcome]
   if (phase.kind === 'failed') note = phase.message
   return (

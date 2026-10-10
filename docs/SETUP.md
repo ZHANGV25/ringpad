@@ -27,7 +27,7 @@ app would play its own audio into the same microphone.
    then hold only what Discord plays: voices, not your game or music.
 4. Keep **Pass my mic through** on, so Discord still hears your real mic.
 
-To test it, start Discord's **Mic Test** on the Voice & Video page, then press **Play test tone**
+To test it, start Discord's **Mic Test** on the Voice & Video page, then press **Play a test sound**
 in Ringpad's Settings > Audio. Discord plays the tone back to you.
 
 ## Valorant
@@ -92,7 +92,7 @@ whatever it sends shows up there.
 **Keys don't work in one game.** If the game runs as administrator, Windows hides its key presses
 from apps that aren't. Run Ringpad as administrator too.
 
-**"No virtual cable found".** Press **Install VB-CABLE** in Settings > Audio and say yes when
+**"No virtual mic yet".** Press **Install VB-CABLE** in Settings > Audio and click **Yes** when
 Windows asks. If Ringpad then asks for a restart, restart Windows. You can also install
 VB-CABLE yourself from [vb-audio.com/Cable](https://vb-audio.com/Cable/) and press
 **Check again**.

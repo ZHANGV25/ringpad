@@ -109,6 +109,7 @@ function Head() {
                 />
               </Art>
               <PandaFace />
+              <HeadEffects />
     </Chain>
   )
 }
@@ -192,12 +193,16 @@ function Eye({ side, cx, pupil }: { side: 'l' | 'r'; cx: number; pupil: number }
 
 const WAVE = { fill: 'none', stroke: 'currentColor', strokeWidth: 3.4, strokeLinecap: 'round' as const }
 
-/** Three arcs beside the head: sound coming in (listening) or going out (talking). */
-function Waves({ name, y }: { name: string; y: number }) {
+/**
+ * Three arcs beside the head, starting at x: sound coming into the ear (listening) or out of the
+ * mouth (talking). They ride on the head, so they stay put when it tilts, and their motion stays
+ * inside the 200-unit box, so nothing next to the panda covers them.
+ */
+function Waves({ name, x, y }: { name: string; x: number; y: number }) {
   const arcs: Array<{ d: string; box: Box }> = [
-    { d: `M176 ${y + 12} Q181 ${y + 20} 176 ${y + 28}`, box: [172, y + 9, 12, 22] },
-    { d: `M184 ${y + 6} Q192 ${y + 20} 184 ${y + 34}`, box: [180, y + 3, 14, 34] },
-    { d: `M192 ${y} Q203 ${y + 20} 192 ${y + 40}`, box: [188, y - 3, 17, 46] },
+    { d: `M${x} ${y + 12} Q${x + 5} ${y + 20} ${x} ${y + 28}`, box: [x - 4, y + 9, 12, 22] },
+    { d: `M${x + 8} ${y + 6} Q${x + 16} ${y + 20} ${x + 8} ${y + 34}`, box: [x + 4, y + 3, 14, 34] },
+    { d: `M${x + 16} ${y} Q${x + 27} ${y + 20} ${x + 16} ${y + 40}`, box: [x + 12, y - 3, 17, 46] },
   ]
   return (
     <L c={`fx ${name}`}>
@@ -218,11 +223,20 @@ const SPARKS: Array<{ d: string; box: Box }> = [
   { d: 'M182 120 l2 6 6 2 -6 2 -2 6 -2 -6 -6 -2 6 -2 z', box: [173, 119, 18, 18] },
 ]
 
+/** Sound at the ear and mouth, riding on the head. */
+function HeadEffects() {
+  return (
+    <>
+      <Waves name="fx-listen" x={170} y={50} />
+      <Waves name="fx-talk" x={164} y={112} />
+    </>
+  )
+}
+
+/** Effects that stay put while the head moves: the head tilts away from the question mark. */
 function PandaEffects() {
   return (
     <>
-      <Waves name="fx-listen" y={52} />
-      <Waves name="fx-talk" y={92} />
       <L c="fx fx-sleep">
         {[1, 2, 3].map((i) => (
           <L key={i} c={`z z${i}`}>

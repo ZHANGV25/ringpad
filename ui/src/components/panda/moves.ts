@@ -42,6 +42,7 @@ export type MoveName =
   | 'dizzy'
   | 'pout'
   | 'spin'
+  | 'wave'
 
 type Poses = Partial<Record<Part, Partial<Pose>>>
 
@@ -236,6 +237,18 @@ function armsUp(t: number, upAt: number, downAt: number): Poses {
   return { armL: { r: up + shake }, armR: { r: -(up + shake) } }
 }
 
+const WAVE_MS = 1900
+/** Hello: the right paw swings up past the head, waves from the shoulder, and drops back. */
+function waveStep(t: number): Poses {
+  const up = envelope([[0, 0], [300, 182, easeOutSoft], [1480, 182], [1820, 0, easeInOut]], t)
+  // The waving fades in and out so the paw never starts or stops with a jolt.
+  const fade = envelope([[280, 0], [400, 1], [1320, 1], [1480, 0]], t)
+  const swing = t > 280 && t < 1480 ? 16 * fade * Math.sin(((t - 280) / 1000) * 2 * Math.PI * 2.4) : 0
+  // The head leans toward the paw and the body follows a touch.
+  const lean = envelope([[0, 0], [320, 1, easeOut], [1480, 1], [1820, 0, easeInOut]], t)
+  return { armR: { r: -(up + swing) }, head: { r: 6 * lean }, root: { r: 1.5 * lean } }
+}
+
 /** Snaps toward `peak` in `attack` ms, then springs back to 0. */
 function kick(t: number, peak: number, attack: number, f = 3.5, z = 0.5): number {
   return t < attack ? envelope([[0, 0], [attack, peak, easeOut]], t) : settle(t, attack, peak, 0, f, z)
@@ -257,6 +270,8 @@ const MOVES: Record<MoveName, () => Move> = {
       { at: 1400, face: null },
     ],
   }),
+
+  wave: () => ({ duration: WAVE_MS, step: waveStep, faces: [{ at: 0, face: 'happy open' }, { at: WAVE_MS - 260, face: null }] }),
 
   wiggle: () => ({
     duration: 600,

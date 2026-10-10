@@ -39,11 +39,13 @@ describe('installing VB-CABLE', () => {
     const busy = screen.getByRole('button', { name: 'Installing…' }) as HTMLButtonElement
     expect(busy.disabled).toBe(true)
     expect((screen.getByRole('button', { name: 'Check again' }) as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getByRole('status').textContent).toMatch(/Windows asks for admin rights/)
+    // Said before the click, because Windows' prompt covers the app while it shows.
+    expect(screen.getByText('Windows will ask. Click Yes.')).toBeTruthy()
+    expect(screen.getByRole('status').textContent).toBe('')
 
     await act(async () => release())
     expect(await screen.findByRole('combobox', { name: 'Virtual mic' })).toBeTruthy()
-    expect(screen.queryByText('No virtual cable found')).toBeNull()
+    expect(screen.queryByText('No virtual mic yet')).toBeNull()
     expect(update).toHaveBeenCalledWith({ patch: { virtualOutput: 'vb-output' } })
     expect(screen.getByText('CABLE Output (VB-Audio Virtual Cable)')).toBeTruthy()
   })
@@ -52,16 +54,16 @@ describe('installing VB-CABLE', () => {
     const api = await openAudioSettings(makeApi({ devices: noCableDevices() }))
     api.nextCableInstall = 'declined'
     fireEvent.click(screen.getByRole('button', { name: 'Install VB-CABLE' }))
-    expect(await screen.findByText(/Windows needs your OK/)).toBeTruthy()
+    expect(await screen.findByText('Windows needs a Yes. Try again.')).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Install VB-CABLE' }) as HTMLButtonElement).disabled).toBe(false)
-    expect(screen.getByText('No virtual cable found')).toBeTruthy()
+    expect(screen.getByText('No virtual mic yet')).toBeTruthy()
   })
 
   it('asks for a restart when Windows has not listed the cable yet', async () => {
     const api = await openAudioSettings(makeApi({ devices: noCableDevices() }))
     api.nextCableInstall = 'needsRestart'
     fireEvent.click(screen.getByRole('button', { name: 'Install VB-CABLE' }))
-    expect(await screen.findByText(/restart your PC to finish/)).toBeTruthy()
+    expect(await screen.findByText('Restart your PC to finish.')).toBeTruthy()
   })
 
   it('shows a failure next to the button and lets you try again', async () => {
@@ -103,11 +105,13 @@ describe('installing VB-CABLE', () => {
 
   it('finishes the first setup step once the cable is in', async () => {
     await renderApp(makeApi({ firstRunDone: false, devices: noCableDevices() }))
-    expect(screen.getByRole('button', { name: 'Skip for now' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Start' }))
+    expect(screen.getByRole('button', { name: 'Skip' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Install VB-CABLE' }))
-    expect(await screen.findByText(/Found VB-CABLE/)).toBeTruthy()
-    expect(document.querySelector<HTMLElement>('.setup-guide .panda')?.dataset.mood).toBe('happy')
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeTruthy()
+    expect(await screen.findByText('Installed')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Next' }).className).toMatch(/primary/)
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+    expect(screen.getByText('CABLE Output (VB-Audio Virtual Cable)')).toBeTruthy()
   })
 })
 

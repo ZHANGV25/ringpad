@@ -163,7 +163,9 @@
   min-height: 72px;
 }
 
+/* Above the waveform beside it, so the panda's sound waves are never painted over. */
 .clip-panda {
+  z-index: 1;
   margin: -4px -2px -6px 0;
   cursor: pointer;
 }

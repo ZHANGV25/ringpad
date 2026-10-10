@@ -83,7 +83,7 @@ describe('audio tab', () => {
 
   it('offers to install VB-CABLE when there is no virtual cable', async () => {
     await openSettings(makeApi({ devices: noCableDevices() }))
-    expect(screen.getByText('No virtual cable found')).toBeTruthy()
+    expect(screen.getByText('No virtual mic yet')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Install VB-CABLE' })).toBeTruthy()
   })
 
@@ -119,7 +119,7 @@ describe('audio tab', () => {
 
   it('plays a test tone and shows it on the teammates meter', async () => {
     await openSettings()
-    fireEvent.click(screen.getByRole('button', { name: 'Play test tone' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Play a test sound' }))
     await waitFor(() => expect(screen.getByRole('meter', { name: 'Teammates hear' }).getAttribute('aria-valuenow')).toBe('99'))
   })
 })

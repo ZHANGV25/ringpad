@@ -69,7 +69,7 @@ export function AudioTab({ settings }: TabProps) {
         <span className="label">Test</span>
         <div className="inline-control">
           <button type="button" className="button small" onClick={() => void api.playTestTone()}>
-            Play test tone
+            Play a test sound
           </button>
         </div>
         <MeterRow />

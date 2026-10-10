@@ -39,9 +39,8 @@ Ringpad and takes one click. Voicemod's and VoiceMeeter's virtual devices work t
    [Releases](https://github.com/ZHANGV25/ringpad/releases) and run it. It installs for your user
    only, with no admin prompt. Windows may say it "protected your PC" because the installer is
    not signed yet: choose **More info**, then **Run anyway**.
-2. Ringpad opens a short setup. If it finds no virtual cable, press **Install VB-CABLE** and say yes
-   when Windows asks for admin rights (and, on some PCs, to install VB-Audio's driver). Then
-   it plays a test tone, asks what to record and shows your keys.
+2. Ringpad opens a short setup. If your PC has no virtual mic, press **Install VB-CABLE** and click
+   **Yes** when Windows asks. Then it shows which mic to pick and your two keys.
 3. In Discord or your game, set your **microphone** (input device) to the cable's output, for
    example **CABLE Output (VB-Audio Virtual Cable)**.
 

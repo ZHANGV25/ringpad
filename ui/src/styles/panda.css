@@ -73,8 +73,8 @@
 .panda .yl-pose { --ox: 76; --oy: 89; }
 .panda .yr-pose { --ox: 124; --oy: 89; }
 .panda .mo-talk { --ox: 100; --oy: 119; }
-.panda .fx-listen .w { --ox: 176; --oy: 72; }
-.panda .fx-talk .w { --ox: 176; --oy: 112; }
+.panda .fx-listen .w { --ox: 172; --oy: 70; }
+.panda .fx-talk .w { --ox: 166; --oy: 132; }
 .panda .z { --ox: 153; --oy: 34; }
 .panda .fx-ask { --ox: 170; --oy: 32; }
 .panda .s1 { --ox: 22; --oy: 52; }
@@ -203,9 +203,9 @@
   animation-delay: 1.6s;
 }
 @keyframes pd-wave-in {
-  0% { opacity: 0; transform: translateX(calc(var(--u) * 14)) scale(1.15); }
+  0% { opacity: 0; transform: translateX(calc(var(--u) * 8)) scale(1.1); }
   30% { opacity: 1; }
-  100% { opacity: 0; transform: translateX(calc(var(--u) * -4)) scale(0.8); }
+  100% { opacity: 0; transform: translateX(calc(var(--u) * -3)) scale(0.85); }
 }
 
 /* Happy: a little bounce with a soft landing, the head rocking a beat behind. */
@@ -243,9 +243,9 @@
   50% { transform: rotate(-6deg); }
 }
 @keyframes pd-wave-out {
-  0% { opacity: 0; transform: translateX(calc(var(--u) * -6)) scale(0.8); }
+  0% { opacity: 0; transform: translateX(calc(var(--u) * -3)) scale(0.85); }
   25% { opacity: 0.9; }
-  100% { opacity: 0; transform: translateX(calc(var(--u) * 12)) scale(1.25); }
+  100% { opacity: 0; transform: translateX(calc(var(--u) * 6)) scale(1.1); }
 }
 
 /* Sleeping: head droops, the ambient loops freeze where they are (pausing never jumps), and a slow

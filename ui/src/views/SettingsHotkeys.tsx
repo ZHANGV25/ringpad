@@ -82,9 +82,11 @@ interface HotkeyRowProps {
   value: string | null
   hint?: string
   readOnly?: boolean
+  /** Setup leaves Clear out, so a key can't be lost by accident. */
+  clearable?: boolean
 }
 
-export function HotkeyRow({ label, target, value, hint, readOnly }: HotkeyRowProps) {
+export function HotkeyRow({ label, target, value, hint, readOnly, clearable = true }: HotkeyRowProps) {
   const { api, state } = useEngine()
   const [capturing, setCapturing] = useState(false)
   const [pending, setPending] = useState<PendingConflict | null>(null)
@@ -163,15 +165,17 @@ export function HotkeyRow({ label, target, value, hint, readOnly }: HotkeyRowPro
             <button type="button" className="button small" disabled={readOnly} onClick={() => setCapturing(true)}>
               Change
             </button>
-            <button
-              type="button"
-              className="button small ghost"
-              disabled={readOnly || value === null}
-              aria-label={`Clear ${label} hotkey`}
-              onClick={() => state.settings && void applyBinding(api, state.settings, target, null, null)}
-            >
-              Clear
-            </button>
+            {clearable ? (
+              <button
+                type="button"
+                className="button small ghost"
+                disabled={readOnly || value === null}
+                aria-label={`Clear ${label} hotkey`}
+                onClick={() => state.settings && void applyBinding(api, state.settings, target, null, null)}
+              >
+                Clear
+              </button>
+            ) : null}
           </>
         )}
       </span>
