@@ -1,6 +1,6 @@
 import { useId, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { ClipInfo, Meters, PadInfo, Playback, Settings } from '../../engine/types'
+import type { ClipInfo, Hotkeys, Meters, PadInfo, Playback, Settings } from '../../engine/types'
 import { KeyChip, Sheet } from '../../components/controls'
 import { PlayIcon, PlusIcon, SendIcon, StopIcon } from '../../components/icons'
 import { Waveform } from '../../components/Waveform'
@@ -31,15 +31,17 @@ export function ClipCard({ settings, clip, playback }: ClipCardProps) {
         {clip ? (
           <ClipWave clip={clip} playing={(onAir || playback.previewing) && clip !== null} />
         ) : (
-          <div className="clip-empty">
-            <span className="clip-empty-title">Something funny just happened?</span>
-            <span className="muted">
-              Press <KeyChip name={settings.hotkeys.grab} /> to keep the last {settings.grabSeconds} s
-            </span>
-          </div>
+          <ol className="clip-howto" aria-label="How it works">
+            <li>
+              <KeyChip name={settings.hotkeys.grab} /> Clip what you just heard
+            </li>
+            <li>
+              <KeyChip name={settings.hotkeys.send} /> Play it to your team
+            </li>
+          </ol>
         )}
       </div>
-      {clip ? <ClipActions playback={playback} onAir={onAir} onSave={() => setSaving(true)} /> : null}
+      {clip ? <ClipActions keys={settings.hotkeys} playback={playback} onAir={onAir} onSave={() => setSaving(true)} /> : null}
       {clip && playback.saveArmed ? (
         <div className="save-armed" role="status">
           <span>Press a pad key to save this clip</span>
@@ -87,13 +89,14 @@ function ClipWave({ clip, playing }: ClipWaveProps) {
 }
 
 interface ClipActionsProps {
+  keys: Hotkeys
   playback: Playback
   onAir: boolean
   onSave: () => void
 }
 
-/** Who hears what is said on each button: preview is only you, send is everyone. */
-function ClipActions({ playback, onAir, onSave }: ClipActionsProps) {
+/** Who hears what is said under each button: preview is only you, send is everyone. Each shows its key. */
+function ClipActions({ keys, playback, onAir, onSave }: ClipActionsProps) {
   const { api } = useEngine()
   return (
     <div className="clip-actions">
@@ -107,11 +110,12 @@ function ClipActions({ playback, onAir, onSave }: ClipActionsProps) {
       <ClipAction
         label={onAir ? 'Stop' : 'Send'}
         icon={onAir ? <StopIcon /> : <SendIcon />}
-        note={onAir ? 'on air' : 'everyone'}
+        note={onAir ? 'on air' : 'your team'}
+        hotkey={onAir ? keys.stop : keys.send}
         tone="primary"
         onPress={() => void (onAir ? api.stopAll() : api.sendClip())}
       />
-      <ClipAction label="Save" icon={<PlusIcon />} note="to a pad" tone="" onPress={onSave} />
+      <ClipAction label="Save" icon={<PlusIcon />} note="to a pad" hotkey={keys.save} tone="" onPress={onSave} />
     </div>
   )
 }
@@ -120,17 +124,19 @@ interface ClipActionProps {
   label: string
   icon: ReactNode
   note: string
+  hotkey?: string | null
   tone: 'ghost' | 'primary' | ''
   onPress: () => void
 }
 
 /** A button named by what it does, with who hears it read out as its description. */
-function ClipAction({ label, icon, note, tone, onPress }: ClipActionProps) {
+function ClipAction({ label, icon, note, hotkey, tone, onPress }: ClipActionProps) {
   const noteId = useId()
   return (
     <button type="button" className="clip-action" aria-label={label} aria-describedby={noteId} onClick={onPress}>
       <span className={tone ? `button ${tone}` : 'button'} aria-hidden="true">
         {icon} {label}
+        {hotkey ? <KeyChip name={hotkey} /> : null}
       </span>
       <span id={noteId} className="clip-action-note">
         {note}

@@ -16,105 +16,121 @@ const MIC_LABELS: Record<MicMode, string> = {
 const PRESS_OPTIONS: readonly PressTalkKeys[] = ['off', 'clips', 'clipsAndMic']
 const PRESS_LABELS: Record<PressTalkKeys, string> = {
   off: 'Off',
-  clips: 'While a clip plays',
-  clipsAndMic: 'Clips and my mic',
+  clips: 'During clips',
+  clipsAndMic: 'Clips and my voice',
 }
 
-interface TalkTabProps {
+interface SettingsProps {
   settings: Settings
-  talk: TalkState
 }
 
-export function TalkTab({ settings, talk }: TalkTabProps) {
+/** When your own voice goes out: always, while a key is held, or toggled by a key. */
+export function MicModeControls({ settings }: SettingsProps) {
   const { api } = useEngine()
-  const [apps, setApps] = useState<AudioApp[]>([])
-  const update = (patch: SettingsPatch) => void api.updateSettings({ patch })
-
-  useEffect(() => {
-    void api.listAudioApps().then((items) => setApps(uniqueApps(items)))
-  }, [api])
-
-  const listedApps = withCurrentApp(apps, settings.talkOnlyApp)
-  const holding = talk.holding.map(keyLabel).join(' + ')
   return (
     <>
-      <section className="group">
-        <span className="label">Your mic</span>
-        <Segmented label="Your mic" options={MIC_OPTIONS} value={settings.micMode} labels={MIC_LABELS} onChange={(micMode) => update({ micMode })} />
-        {settings.micMode !== 'open' ? (
-          <>
-            <HotkeyRow label="Talk key" target={{ kind: 'main', key: 'talk' }} value={settings.hotkeys.talk} />
-            {settings.hotkeys.talk === null ? <span className="hint">Pick a talk key. Until then your mic stays off.</span> : null}
-            <span className="hint">Clips always play. Set Discord or your game to voice activity on the Ringpad cable.</span>
-          </>
-        ) : null}
-      </section>
-      <section className="group">
-        <span className="label">Press my game's talk key</span>
-        <span className="hint">
-          For games where voice chat only works while a key is held, like Valorant team chat. Ringpad holds the game's key for you.
-        </span>
-        <Segmented
-          label="Press the key"
-          options={PRESS_OPTIONS}
-          value={settings.pressTalkKeys}
-          labels={PRESS_LABELS}
-          onChange={(pressTalkKeys) => update({ pressTalkKeys })}
-        />
-        {settings.pressTalkKeys === 'clipsAndMic' && settings.micMode === 'toggle' ? (
-          <span className="hint">Your talk key then works as a toggle for the game too.</span>
-        ) : null}
-        {settings.pressTalkKeys === 'clipsAndMic' && settings.micMode === 'open' ? (
-          <span className="hint">Choose Hold a key or Press to toggle above for your mic to count.</span>
-        ) : null}
-        {settings.pressTalkKeys !== 'off' ? (
-          <>
-            <GameKeys settings={settings} />
-            <div>
-              <Slider label="Head start" value={settings.talkLeadMs} min={0} max={500} step={10} suffix=" ms" onChange={(talkLeadMs) => update({ talkLeadMs })} />
-              <span className="hint">Presses the key this long before a clip so the first word is not cut.</span>
-            </div>
-            <Slider label="Release delay" value={settings.talkTailMs} min={0} max={2000} step={50} suffix=" ms" onChange={(talkTailMs) => update({ talkTailMs })} />
-            <label className="slider-row">
-              <span>Only when this app is in front</span>
-              <select
-                aria-label="Only when this app is in front"
-                value={settings.talkOnlyApp ?? ''}
-                onChange={(event) => update({ talkOnlyApp: event.currentTarget.value || null })}
-              >
-                <option value="">Any app</option>
-                {listedApps.map((app) => (
-                  <option key={app.exe} value={app.exe}>
-                    {app.name}
-                  </option>
-                ))}
-              </select>
-              <span />
-            </label>
-            <div className="inline-control talk-test-row">
-              <button type="button" className="button small" onClick={() => void api.testTalkKeys()}>
-                Test
-              </button>
-              {holding ? <span className="hint">Holding {holding}</span> : null}
-            </div>
-            {talk.blocked ? (
-              <span className="inline-error" role="alert">
-                {talk.blocked}
-              </span>
-            ) : null}
-            <span className="hint">Ringpad uses a normal Windows key press. No driver, nothing touches the game. Off unless you turn it on.</span>
-          </>
-        ) : null}
-      </section>
+      <Segmented
+        label="Your voice"
+        options={MIC_OPTIONS}
+        value={settings.micMode}
+        labels={MIC_LABELS}
+        onChange={(micMode) => void api.updateSettings({ patch: { micMode } })}
+      />
+      {settings.micMode !== 'open' ? (
+        <>
+          <HotkeyRow label="Talk key" target={{ kind: 'main', key: 'talk' }} value={settings.hotkeys.talk} />
+          {settings.hotkeys.talk === null ? <span className="hint">Pick a talk key. Until then your voice stays off.</span> : null}
+          <span className="hint">Clips always play. Set Discord or your game to voice activity.</span>
+        </>
+      ) : null}
     </>
   )
 }
 
-interface GameKeysProps {
+interface GameTalkKeyProps {
   settings: Settings
+  talk: TalkState
 }
 
-function GameKeys({ settings }: GameKeysProps) {
+/** For games whose voice chat only sends while a key is held: Ringpad holds it for you. */
+export function GameTalkKey({ settings, talk }: GameTalkKeyProps) {
+  const { api } = useEngine()
+  const update = (patch: SettingsPatch) => void api.updateSettings({ patch })
+  const holding = talk.holding.map(keyLabel).join(' + ')
+  return (
+    <>
+      <span className="hint">For games like Valorant, where team chat only sends while a key is held.</span>
+      <Segmented
+        label="Hold my game's talk key"
+        options={PRESS_OPTIONS}
+        value={settings.pressTalkKeys}
+        labels={PRESS_LABELS}
+        onChange={(pressTalkKeys) => update({ pressTalkKeys })}
+      />
+      {settings.pressTalkKeys === 'clipsAndMic' && settings.micMode === 'open' ? (
+        <span className="hint">Pick Hold a key or Press to toggle above for your voice to count.</span>
+      ) : null}
+      {settings.pressTalkKeys !== 'off' ? (
+        <>
+          <GameKeys settings={settings} />
+          <div className="inline-control talk-test-row">
+            <button type="button" className="button small" onClick={() => void api.testTalkKeys()}>
+              Test
+            </button>
+            {holding ? <span className="hint">Holding {holding}</span> : null}
+          </div>
+          {talk.blocked ? (
+            <span className="inline-error" role="alert">
+              {talk.blocked}
+            </span>
+          ) : null}
+          <details className="more">
+            <summary>Timing</summary>
+            <TalkTiming settings={settings} />
+          </details>
+        </>
+      ) : null}
+    </>
+  )
+}
+
+function TalkTiming({ settings }: SettingsProps) {
+  const { api } = useEngine()
+  const [apps, setApps] = useState<AudioApp[]>([])
+  const update = (patch: SettingsPatch) => void api.updateSettings({ patch })
+  useEffect(() => {
+    void api.listAudioApps().then((items) => setApps(uniqueApps(items)))
+  }, [api])
+  const listedApps = withCurrentApp(apps, settings.talkOnlyApp)
+  return (
+    <div className="more-body">
+      <div>
+        <Slider label="Head start" value={settings.talkLeadMs} min={0} max={500} step={10} suffix=" ms" onChange={(talkLeadMs) => update({ talkLeadMs })} />
+        <span className="hint">Presses the key this long before a clip so the first word is not cut.</span>
+      </div>
+      <Slider label="Release delay" value={settings.talkTailMs} min={0} max={2000} step={50} suffix=" ms" onChange={(talkTailMs) => update({ talkTailMs })} />
+      <label className="slider-row">
+        <span>Only when this app is in front</span>
+        <select
+          aria-label="Only when this app is in front"
+          value={settings.talkOnlyApp ?? ''}
+          onChange={(event) => update({ talkOnlyApp: event.currentTarget.value || null })}
+        >
+          <option value="">Any app</option>
+          {listedApps.map((app) => (
+            <option key={app.exe} value={app.exe}>
+              {app.name}
+            </option>
+          ))}
+        </select>
+        <span />
+      </label>
+      <span className="hint">A normal Windows key press. No driver, nothing touches the game.</span>
+    </div>
+  )
+}
+
+function GameKeys({ settings }: SettingsProps) {
   const { api } = useEngine()
   const [capturing, setCapturing] = useState(false)
   const latest = useRef(settings)

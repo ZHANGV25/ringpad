@@ -48,6 +48,7 @@ export function withReporting(api: EngineApi, report: Report, onDevices: OnDevic
     saveClipToPad: (args) => guard(() => api.saveClipToPad(args)),
     playPad: (args) => guard(() => api.playPad(args)),
     importPad: (args) => guard(() => api.importPad(args)),
+    pickSoundFile: () => guard(() => api.pickSoundFile()),
     renamePad: (args) => guard(() => api.renamePad(args)),
     setPadVolume: (args) => guard(() => api.setPadVolume(args)),
     setPadHotkey: (args) => guard(() => api.setPadHotkey(args)),
@@ -58,6 +59,8 @@ export function withReporting(api: EngineApi, report: Report, onDevices: OnDevic
     openExternal: (args) => guard(() => api.openExternal(args)),
     openClipsFolder: () => guard(() => api.openClipsFolder()),
     testTalkKeys: () => guard(() => api.testTalkKeys()),
+    // Polled quietly: a failed check just means nothing is listening yet.
+    micUsers: () => api.micUsers().catch(() => []),
     // Not guarded: the install button shows its own failure and must leave its busy state.
     installVirtualMic: () => api.installVirtualMic(),
   }

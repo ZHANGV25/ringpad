@@ -105,9 +105,8 @@ pub fn list_audio_apps() -> Result<Vec<AudioApp>, crate::BackendError> {
 
 #[cfg(windows)]
 fn enumerate_audio_apps() -> Result<Vec<AudioApp>, crate::BackendError> {
-    use wasapi::{DeviceEnumerator, Direction, SessionState};
+    use wasapi::{DeviceEnumerator, Direction};
 
-    let self_pid = std::process::id();
     let enumerator = DeviceEnumerator::new().map_err(crate::BackendError::from_wasapi)?;
     let collection = enumerator
         .get_device_collection(&Direction::Render)
@@ -115,50 +114,80 @@ fn enumerate_audio_apps() -> Result<Vec<AudioApp>, crate::BackendError> {
     let mut apps = Vec::new();
     for device in &collection {
         let device = device.map_err(crate::BackendError::from_wasapi)?;
-        let manager = device
-            .get_iaudiosessionmanager()
-            .map_err(crate::BackendError::from_wasapi)?;
-        let sessions = manager
-            .get_audiosessionenumerator()
-            .map_err(crate::BackendError::from_wasapi)?;
-        for index in 0..sessions
-            .get_count()
-            .map_err(crate::BackendError::from_wasapi)?
-        {
-            let control = sessions
-                .get_session(index)
-                .map_err(crate::BackendError::from_wasapi)?;
-            let pid = control
-                .get_process_id()
-                .map_err(crate::BackendError::from_wasapi)?;
-            if pid == 0 || pid == self_pid {
-                continue;
-            }
-            let active = control
-                .get_state()
-                .map_err(crate::BackendError::from_wasapi)?
-                == SessionState::Active;
-            let exe_name = exe_name_for_pid(pid).unwrap_or_else(|| format!("pid-{pid}"));
-            let display_name = display_name_or_exe_stem(
-                &control
-                    .get_display_name()
-                    .map_err(crate::BackendError::from_wasapi)?,
-                &exe_name,
-            );
-            let peak = control
-                .get_audiometerinformation()
-                .and_then(|meter| meter.get_peak_value())
-                .unwrap_or(0.0);
-            apps.push(AudioApp {
-                pid,
-                exe_name,
-                display_name,
-                active,
-                peak,
-            });
-        }
+        apps.extend(sessions_on(&device)?);
     }
     Ok(merge_audio_apps(apps))
+}
+
+/// Apps with an audio session on one endpoint. On a microphone, those are the apps that
+/// opened it to record (Discord, a game's voice chat), whether or not they record right now.
+#[cfg(windows)]
+pub fn apps_using_device(device_id: &str) -> Result<Vec<AudioApp>, crate::BackendError> {
+    crate::com::on_mta_thread(|| {
+        let enumerator =
+            wasapi::DeviceEnumerator::new().map_err(crate::BackendError::from_wasapi)?;
+        let device = enumerator
+            .get_device(device_id)
+            .map_err(|_| crate::BackendError::DeviceNotFound(device_id.to_string()))?;
+        Ok(merge_audio_apps(sessions_on(&device)?))
+    })
+}
+
+/// Apps with an audio session on one endpoint.
+#[cfg(not(windows))]
+pub fn apps_using_device(_device_id: &str) -> Result<Vec<AudioApp>, crate::BackendError> {
+    Ok(Vec::new())
+}
+
+#[cfg(windows)]
+fn sessions_on(device: &wasapi::Device) -> Result<Vec<AudioApp>, crate::BackendError> {
+    use wasapi::SessionState;
+
+    let self_pid = std::process::id();
+    let manager = device
+        .get_iaudiosessionmanager()
+        .map_err(crate::BackendError::from_wasapi)?;
+    let sessions = manager
+        .get_audiosessionenumerator()
+        .map_err(crate::BackendError::from_wasapi)?;
+    let mut apps = Vec::new();
+    for index in 0..sessions
+        .get_count()
+        .map_err(crate::BackendError::from_wasapi)?
+    {
+        let control = sessions
+            .get_session(index)
+            .map_err(crate::BackendError::from_wasapi)?;
+        let pid = control
+            .get_process_id()
+            .map_err(crate::BackendError::from_wasapi)?;
+        if pid == 0 || pid == self_pid {
+            continue;
+        }
+        let active = control
+            .get_state()
+            .map_err(crate::BackendError::from_wasapi)?
+            == SessionState::Active;
+        let exe_name = exe_name_for_pid(pid).unwrap_or_else(|| format!("pid-{pid}"));
+        let display_name = display_name_or_exe_stem(
+            &control
+                .get_display_name()
+                .map_err(crate::BackendError::from_wasapi)?,
+            &exe_name,
+        );
+        let peak = control
+            .get_audiometerinformation()
+            .and_then(|meter| meter.get_peak_value())
+            .unwrap_or(0.0);
+        apps.push(AudioApp {
+            pid,
+            exe_name,
+            display_name,
+            active,
+            peak,
+        });
+    }
+    Ok(apps)
 }
 
 /// Lists audio apps currently present in sessions on active output devices.
@@ -180,6 +209,35 @@ pub fn process_ids_by_exe(_exe_name: &str) -> Result<Vec<u32>, crate::BackendErr
     Ok(Vec::new())
 }
 
+/// Whether any process with this executable name is running. Cheap enough to poll.
+#[must_use]
+pub fn app_running(exe_name: &str) -> bool {
+    process_ids_by_exe(exe_name).is_ok_and(|pids| !pids.is_empty())
+}
+
+/// Readable names for well-known apps whose executables have awkward names.
+const KNOWN_APPS: &[(&str, &str)] = &[
+    ("VALORANT-Win64-Shipping.exe", "Valorant"),
+    ("cs2.exe", "Counter-Strike 2"),
+    ("FortniteClient-Win64-Shipping.exe", "Fortnite"),
+    ("r5apex.exe", "Apex Legends"),
+    ("r5apex_dx12.exe", "Apex Legends"),
+    ("League of Legends.exe", "League of Legends"),
+    ("Overwatch.exe", "Overwatch"),
+    ("RainbowSix.exe", "Rainbow Six Siege"),
+    ("RocketLeague.exe", "Rocket League"),
+    ("Discord.exe", "Discord"),
+];
+
+/// The readable name of a well-known app, by executable file name.
+#[must_use]
+pub fn known_app_name(exe_name: &str) -> Option<&'static str> {
+    KNOWN_APPS
+        .iter()
+        .find(|(exe, _)| exe.eq_ignore_ascii_case(exe_name))
+        .map(|(_, name)| *name)
+}
+
 /// Resolves an executable name to the preferred capture process id.
 pub fn resolve_app_pid(exe_name: &str) -> Result<u32, crate::BackendError> {
     let sessions = list_audio_apps()?;
@@ -190,6 +248,9 @@ pub fn resolve_app_pid(exe_name: &str) -> Result<u32, crate::BackendError> {
 #[cfg(windows)]
 #[must_use]
 fn display_name_or_exe_stem(display_name: &str, exe_name: &str) -> String {
+    if let Some(name) = known_app_name(exe_name) {
+        return name.to_string();
+    }
     if !display_name.trim().is_empty() {
         return display_name.to_string();
     }

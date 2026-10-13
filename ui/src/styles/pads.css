@@ -68,31 +68,22 @@
   transition-duration: var(--dur-press);
 }
 
+/* An empty pad is a dashed outline that says what a click does: add a sound, or save the clip. */
 .pad-key.empty .pad-cap {
   border-style: dashed;
   box-shadow: none;
-  color: var(--text-faint);
-  cursor: default;
+  color: var(--text-muted);
 }
 
 .pad-key.empty .pad-cap:hover {
-  background: transparent;
-}
-
-.pad-key.empty .pad-cap:active {
-  transform: none;
-}
-
-/* With a clip waiting, an empty pad invites it in. */
-.pad-key.empty.open .pad-cap {
-  border-color: var(--text-muted);
-  color: var(--text-muted);
-  cursor: pointer;
-}
-
-.pad-key.empty.open .pad-cap:hover {
   border-style: solid;
   background: var(--surface);
+  color: var(--text);
+}
+
+/* With a clip waiting, empty pads stand out a little more: that's where it goes. */
+.pad-key.empty.open .pad-cap {
+  border-color: var(--text-muted);
   color: var(--text);
 }
 

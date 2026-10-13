@@ -1,5 +1,5 @@
 import type { EngineApi, FileDropEvent, Unsubscribe } from './api'
-import { DEFAULT_PAD_HOTKEYS, DEFAULT_SETTINGS, DEFAULT_TALK, type AudioApp, type CableInstall, type ClipInfo, type DeviceInfo, type EngineStatus, type Meters, type PadInfo, type Playback, type Settings, type SettingsPatch, type Snapshot, type TalkState } from './types'
+import { DEFAULT_PAD_HOTKEYS, DEFAULT_SETTINGS, DEFAULT_TALK, type AudioApp, type CableInstall, type MicUser, type ClipInfo, type DeviceInfo, type EngineStatus, type Meters, type PadInfo, type Playback, type Settings, type SettingsPatch, type Snapshot, type TalkState } from './types'
 import type { EventName, EventPayloads, Listener } from './fakeEvents'
 import { nextTalkState, talkEqual, validateTalkSettings } from './fakeTalk'
 import { cleanName, clamp, cloneClip, cloneDevices, clonePad, clonePads, cloneSettings, cloneTalk, makeApps, makeClip, makeDevices, makePad, makePeaks, requirePad, seededRandom, speechLevel, walk } from './fakeData'
@@ -12,6 +12,8 @@ interface FakeOptions {
   devices?: DeviceInfo[]
 }
 const LIVE_PEAKS = 300
+/** In the dev preview, Discord picks up Ringpad's mic this long after setup first looks. */
+const DISCORD_JOINS_MS = 4000
 /** The two endpoints VB-CABLE adds, named as Windows lists them. */
 const VB_CABLE_DEVICES: ReadonlyArray<DeviceInfo> = [
   { id: 'vb-output', name: 'CABLE Input (VB-Audio Virtual Cable)', direction: 'output', isDefault: false, virtualCable: 'vbcable' },
@@ -44,6 +46,10 @@ export class FakeEngineApi implements EngineApi {
   private talkTestTimer: number | null = null
   public openedUrl: string | null = null
   public clipsFolderOpened = false
+  /** Apps recording from a mic. With timers on (the dev preview), Discord picks Ringpad's mic a few seconds after the first look. */
+  public micApps: MicUser[] = []
+  private firstMicLook: number | null = null
+  private readonly timers: boolean
   /** What the next VB-CABLE install reports; an Error makes it fail. */
   public nextCableInstall: CableInstall | Error = 'installed'
   constructor(options: FakeOptions = {}) {
@@ -52,6 +58,7 @@ export class FakeEngineApi implements EngineApi {
     this.livePeaks = Array.from({ length: LIVE_PEAKS }, (_, index) => speechLevel(index, this.random))
     this.liveTick = LIVE_PEAKS
     this.devices = options.devices ?? makeDevices()
+    this.timers = options.startTimers !== false
     this.settings = {
       ...DEFAULT_SETTINGS,
       ...options.settings,
@@ -93,6 +100,13 @@ export class FakeEngineApi implements EngineApi {
       peak: clamp(app.peak + (this.random() - 0.5) * 0.2),
     }))
     return this.apps.map((app) => ({ ...app }))
+  }
+  async micUsers(): Promise<MicUser[]> {
+    this.firstMicLook ??= this.now()
+    if (this.timers && this.now() - this.firstMicLook > DISCORD_JOINS_MS) {
+      this.micApps = [{ pid: 4242, exe: 'Discord.exe', name: 'Discord', mic: 'CABLE Output (VB-Audio Virtual Cable)', ringpad: true }]
+    }
+    return this.micApps.map((app) => ({ ...app }))
   }
   async updateSettings({ patch }: { patch: SettingsPatch }): Promise<Settings> {
     const next = {
@@ -181,6 +195,13 @@ export class FakeEngineApi implements EngineApi {
     this.pads = this.pads.map((current, index) => (index === slot ? pad : current))
     this.emit('pads', clonePads(this.pads))
     return clonePad(pad)
+  }
+
+  /** What the next file picker returns; null is closing it without a file. */
+  public nextPickedFile: string | null = 'C:/Sounds/Air horn.mp3'
+
+  async pickSoundFile(): Promise<string | null> {
+    return this.nextPickedFile
   }
 
   async renamePad({ slot, name }: { slot: number; name: string }): Promise<PadInfo> {

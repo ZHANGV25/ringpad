@@ -1,81 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { AudioApp, Meters, Settings, SettingsPatch } from '../engine/types'
-import { IconButton, Slider, Toggle } from '../components/controls'
+import type { AudioApp, Settings } from '../engine/types'
+import { IconButton, Toggle } from '../components/controls'
 import { RefreshIcon } from '../components/icons'
-import { LevelMeter } from '../components/LevelMeter'
 import { useEngine } from '../state/EngineProvider'
 import { NoCableCallout, SwitchToVbCable } from './CableInstall'
 
 interface TabProps {
   settings: Settings
-}
-
-export function AudioTab({ settings }: TabProps) {
-  const { api, state } = useEngine()
-  const update = (patch: SettingsPatch) => void api.updateSettings({ patch })
-  const outputs = state.devices.filter((device) => device.direction === 'output' && !device.virtualCable)
-  const inputs = state.devices.filter((device) => device.direction === 'input' && !device.virtualCable)
-  return (
-    <>
-      <section className="group">
-        <span className="label">Record from</span>
-        <SourcePicker settings={settings} />
-      </section>
-      <section className="group">
-        <span className="label">Virtual mic</span>
-        <VirtualMicPicker settings={settings} />
-      </section>
-      <section className="group">
-        <span className="label">Your headphones</span>
-        <select
-          aria-label="Headphones"
-          value={settings.headphones ?? ''}
-          onChange={(event) => update({ headphones: event.currentTarget.value || null })}
-        >
-          <option value="">Same as Windows</option>
-          {outputs.map((device) => (
-            <option key={device.id} value={device.id}>
-              {device.name}
-            </option>
-          ))}
-        </select>
-        <Slider label="You hear" value={settings.monitorVolume} min={0} max={1} step={0.01} percent onChange={(monitorVolume) => update({ monitorVolume })} />
-      </section>
-      <section className="group">
-        <span className="label">Your mic</span>
-        <Toggle checked={settings.micEnabled} label="Pass my mic through" hint="Teammates hear you and the clips on one mic." onChange={(micEnabled) => update({ micEnabled })} />
-        <select
-          aria-label="Mic device"
-          disabled={!settings.micEnabled}
-          value={settings.mic ?? ''}
-          onChange={(event) => update({ mic: event.currentTarget.value || null })}
-        >
-          <option value="">Default mic</option>
-          {inputs.map((device) => (
-            <option key={device.id} value={device.id}>
-              {device.name}
-            </option>
-          ))}
-        </select>
-        <Toggle checked={settings.ducking} label="Lower my mic while sending" hint="Stops your mic picking the clip up from your headphones." onChange={(ducking) => update({ ducking })} />
-      </section>
-      <section className="group">
-        <span className="label">Levels and length</span>
-        <Slider label="Clip volume" value={settings.sendVolume} min={0} max={1} step={0.01} percent onChange={(sendVolume) => update({ sendVolume })} />
-        <Slider label="Keep the last" value={settings.historySeconds} min={10} max={120} step={5} suffix=" s" onChange={(historySeconds) => update({ historySeconds })} />
-        <Slider label="Clip length" value={settings.grabSeconds} min={1} max={30} step={1} suffix=" s" onChange={(grabSeconds) => update({ grabSeconds })} />
-      </section>
-      <section className="group">
-        <span className="label">Test</span>
-        <div className="inline-control">
-          <button type="button" className="button small" onClick={() => void api.playTestTone()}>
-            Play a test sound
-          </button>
-        </div>
-        <MeterRow />
-      </section>
-    </>
-  )
 }
 
 /** Choose what Ringpad records: the default output, one output device, or one app. */
@@ -96,7 +27,7 @@ export function SourcePicker({ settings }: TabProps) {
           value={sourceToValue(settings.source)}
           onChange={(event) => void api.updateSettings({ patch: { source: valueToSource(event.currentTarget.value, listed) } })}
         >
-          <option value="default">What I hear (default output)</option>
+          <option value="default">Everything I hear</option>
           <optgroup label="One app only">
             {listed.map((app) => (
               <option key={app.exe} value={`app:${app.exe}`}>
@@ -118,7 +49,7 @@ export function SourcePicker({ settings }: TabProps) {
           <RefreshIcon />
         </IconButton>
       </div>
-      <span className="hint">For the cleanest clips, pick the app your teammates talk in. Apps playing sound now have a ●.</span>
+      <span className="hint">Pick the app your team talks in. ● means it’s playing sound now.</span>
       {settings.source.kind === 'device' ? (
         <Toggle
           checked={settings.relaySource}
@@ -151,9 +82,6 @@ export function VirtualMicPicker({ settings }: TabProps) {
           </option>
         ))}
       </select>
-      <span className="hint">
-        In your game or Discord, choose <strong>{state.virtualCaptureHint ?? 'the cable output'}</strong> as your microphone.
-      </span>
       {cables.some((device) => device.virtualCable === 'vbcable') ? null : <SwitchToVbCable />}
     </>
   )
@@ -180,22 +108,4 @@ export function valueToSource(value: string, apps: AudioApp[]): Settings['source
 
 function sortApps(apps: AudioApp[]): AudioApp[] {
   return [...apps].sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name))
-}
-
-const readSource = (meters: Meters) => meters.source
-const readMic = (meters: Meters) => meters.mic
-const readOut = (meters: Meters) => meters.outgoing
-
-/** Every level in one place, for checking each step of the route. */
-function MeterRow() {
-  return (
-    <div className="meter-rows">
-      <span className="small muted">Recording</span>
-      <LevelMeter label="Recording" read={readSource} />
-      <span className="small muted">Your mic</span>
-      <LevelMeter label="Your mic" read={readMic} />
-      <span className="small muted">Teammates hear</span>
-      <LevelMeter label="Teammates hear" read={readOut} />
-    </div>
-  )
 }

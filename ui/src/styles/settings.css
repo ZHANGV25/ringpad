@@ -171,52 +171,6 @@
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
-/* Pads tab rows. */
-.pad-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px 0;
-  border-bottom: var(--hairline) solid var(--line);
-}
-
-.pad-row:last-child {
-  border-bottom: 0;
-}
-
-.pad-row-top {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.pad-row-top .slot-number {
-  width: 14px;
-  color: var(--text-muted);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-}
-
-.pad-row-top .pad-name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pad-row.empty .pad-name {
-  color: var(--text-faint);
-}
-
-.pad-row-bottom {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-left: 22px;
-}
-
 /* About. */
 .about-head {
   display: flex;
@@ -331,48 +285,225 @@
   height: 16px;
 }
 
-/* The mic name to look for: big, and set apart so the eye finds it again in Discord's list. */
-.mic-name {
-  margin-top: -8px;
-  padding: 12px 14px;
+/* "Use Ringpad's mic": the one setting to change, drawn the way the app shows it. */
+.mock {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 14px;
   border: var(--hairline) solid var(--line-strong);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius);
   background: var(--surface);
-  font-size: 15px;
+}
+
+.mock-place {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.mock-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mock-label {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* The dropdown to change, ringed and pulsing so the eye lands on it first. */
+.mock-select {
+  position: relative;
+  padding: 10px 34px 10px 12px;
+  border: 2px solid var(--text);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font-size: 13.5px;
   font-weight: 650;
   overflow-wrap: anywhere;
 }
 
-.where {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 6px 12px;
-  margin: 0;
-  font-size: 12.5px;
+.mock-select::after {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  width: 7px;
+  height: 7px;
+  margin-top: -6px;
+  border-right: 2px solid var(--text);
+  border-bottom: 2px solid var(--text);
+  content: '';
+  transform: rotate(45deg);
 }
 
-.where dt {
+.mock-select::before {
+  position: absolute;
+  inset: -2px;
+  border: 2px solid var(--text);
+  border-radius: inherit;
+  content: '';
+  opacity: 0;
+  animation: mock-ping 2.2s var(--ease-out) infinite;
+}
+
+@keyframes mock-ping {
+  0% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.03, 1.2);
+  }
+}
+
+.mock-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: var(--hairline) solid var(--line);
+}
+
+.mock-row .mock-label {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.mock-value {
+  padding: 2px 9px;
+  border: 2px solid var(--text);
+  border-radius: var(--radius-xs);
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+/* The live check under it: works, wrong mic, or waiting. */
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14px;
   font-weight: 600;
 }
 
-.where dd {
-  margin: 0;
-  color: var(--text-muted);
+.check svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
 }
 
-/* The must-do under each path reads as an instruction, not as small print. */
-.where dd span {
+.check.waiting {
+  font-weight: 500;
+}
+
+.check .muted {
   display: block;
+  font-size: 12.5px;
+  font-weight: 400;
+}
+
+.check.wrong {
+  display: block;
+  padding: 10px 12px;
+  border: 1.5px dashed var(--text);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.check-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border: 1.5px solid var(--text-muted);
+  border-radius: 50%;
+  animation: check-blink 1.4s ease-in-out infinite;
+}
+
+@keyframes check-blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mock-select::before,
+  .check-dot {
+    animation: none;
+  }
+}
+
+/* Setup's two keys: the key itself is the thing to look at. */
+.setup-keys .key-chip {
+  min-width: 40px;
+  height: 30px;
+  font-size: 14px;
+}
+
+/* Mic > Test: the button, then the bar it moves. */
+.test-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.test-meter {
+  height: 6px;
+  border-radius: 3px;
+}
+
+/* Rarely needed settings, folded away until asked for. */
+.more > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.more > summary::-webkit-details-marker {
+  display: none;
+}
+
+.more > summary::before {
+  width: 5px;
+  height: 5px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  content: '';
+  transform: rotate(-45deg);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.more[open] > summary::before {
+  transform: rotate(45deg);
+}
+
+.more > summary:hover {
   color: var(--text);
 }
 
-.tone-test {
+.more-body {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 16px;
-  border: var(--hairline) solid var(--line);
-  border-radius: var(--radius);
+  gap: 8px;
+  padding-top: 10px;
 }
 
 .wizard-actions {

@@ -4,15 +4,19 @@ import { App } from './App'
 import { makeApi, renderApp, withPads } from './test/render'
 
 describe('main window', () => {
-  it('shows the empty state until the first clip', async () => {
+  it('shows the two keys and what they do until the first clip', async () => {
     await renderApp()
     expect(screen.getByText('Listening to your headphones')).toBeTruthy()
-    expect(screen.getByText('Something funny just happened?')).toBeTruthy()
+    const howTo = screen.getByRole('list', { name: 'How it works' })
+    expect(within(howTo).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      'F8 Clip what you just heard',
+      'F7 Play it to your team',
+    ])
     expect(screen.getByText('Last 30 s')).toBeTruthy()
     expect(screen.getByText('5 s')).toBeTruthy()
-    expect(screen.getByText('Keep your best clips here')).toBeTruthy()
+    expect(screen.getByText('Fill a pad, then press its key')).toBeTruthy()
     expect(document.querySelectorAll('[data-slot]')).toHaveLength(8)
-    expect(screen.getByRole('button', { name: 'Pad 1, empty' })).toBeTruthy()
+    expect(screen.getAllByText('Add sound')).toHaveLength(8)
     expect(screen.queryByRole('button', { name: 'Send' })).toBeNull()
   })
 
@@ -29,9 +33,13 @@ describe('main window', () => {
     expect(screen.getByRole('region', { name: 'Current clip' }).className).toContain('on-air')
     expect(screen.getByRole('button', { name: 'Preview' })).toBeTruthy()
 
+    // While it is on air, the button stops it, and shows the stop key.
+    expect(within(screen.getByRole('button', { name: 'Stop' })).getByText('F9')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
-    expect(await screen.findByRole('button', { name: 'Send' })).toBeTruthy()
-    expect(screen.getByText('everyone')).toBeTruthy()
+    const send = await screen.findByRole('button', { name: 'Send' })
+    expect(within(send).getByText('F7')).toBeTruthy()
+    expect(screen.getByText('your team').id).toBe(send.getAttribute('aria-describedby'))
+    expect(within(screen.getByRole('button', { name: 'Save' })).getByText('F6')).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Current clip' }).className).not.toContain('on-air')
 
     const preview = vi.spyOn(api, 'previewClip')
@@ -70,13 +78,25 @@ describe('main window', () => {
     await waitFor(() => expect(screen.queryByText('Press a pad key to save this clip')).toBeNull())
   })
 
-  it('ignores an empty pad when there is no clip to keep', async () => {
+  it('asks for a sound file when an empty pad is clicked with no clip', async () => {
     const api = await renderApp()
-    const play = vi.spyOn(api, 'playPad')
     const save = vi.spyOn(api, 'saveClipToPad')
-    fireEvent.click(screen.getByRole('button', { name: 'Pad 2, empty' }))
-    expect(play).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Add a sound to pad 2' }))
+    expect(await screen.findByRole('button', { name: 'Play Air horn' })).toBeTruthy()
+    expect(document.querySelector('[data-slot="1"]')?.className).toContain('filled')
     expect(save).not.toHaveBeenCalled()
+  })
+
+  it('leaves the pad empty when the file picker is closed', async () => {
+    const api = makeApi()
+    api.nextPickedFile = null
+    await renderApp(api)
+    const pick = vi.spyOn(api, 'pickSoundFile')
+    const importPad = vi.spyOn(api, 'importPad')
+    fireEvent.click(screen.getByRole('button', { name: 'Add a sound to pad 3' }))
+    await waitFor(() => expect(pick).toHaveBeenCalledOnce())
+    expect(importPad).not.toHaveBeenCalled()
+    expect(document.querySelector('[data-slot="2"]')?.className).not.toContain('filled')
   })
 
   it('plays a filled pad', async () => {
@@ -92,8 +112,8 @@ describe('main window', () => {
   it('keeps the clip on an empty pad with one click', async () => {
     const api = await renderApp(await withPads(makeApi(), [0]))
     await act(() => api.grabClip())
-    expect(screen.getByText('Click an empty pad to keep the clip')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Keep the clip on pad 3' }))
+    expect(screen.getAllByText('Save clip')).toHaveLength(7)
+    fireEvent.click(screen.getByRole('button', { name: 'Save the clip to pad 3' }))
     expect(await screen.findByRole('button', { name: 'Play Pad 3' })).toBeTruthy()
     expect(document.querySelector('[data-slot="2"]')?.className).toContain('filled')
   })
@@ -144,13 +164,14 @@ describe('main window', () => {
     fireEvent.click(screen.getByRole('button', { name: /Clear pad/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
     // The clip is still there, so the cleared pad offers to keep it.
-    expect(await screen.findByRole('button', { name: 'Keep the clip on pad 1' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Save the clip to pad 1' })).toBeTruthy()
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('sets the clip volume from the footer', async () => {
     await renderApp()
-    expect(screen.getByRole('meter', { name: 'What teammates hear' })).toBeTruthy()
+    expect(screen.getByText('Your team hears')).toBeTruthy()
+    expect(screen.getByRole('meter', { name: 'What your team hears' })).toBeTruthy()
     fireEvent.change(screen.getByRole('slider', { name: 'Clip volume' }), { target: { value: '0.8' } })
     expect(await screen.findByText('80%')).toBeTruthy()
   })
@@ -180,6 +201,10 @@ describe('main window', () => {
     expect(screen.getByRole('tablist', { name: 'Settings sections' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Back' }))
     expect(screen.getByText('No virtual cable')).toBeTruthy()
+
+    act(() => api.simulateStatus({ kind: 'waiting', sourceLabel: 'Valorant' }))
+    expect(screen.getByText('Waiting for Valorant to open')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Fix' })).toBeNull()
 
     act(() => api.simulateStatus({ kind: 'starting' }))
     expect(screen.getByText('Starting')).toBeTruthy()

@@ -19,6 +19,8 @@ use thiserror::Error;
 use crate::pads_store::PadsStore;
 
 const IMPORT_RATE: u32 = 48_000;
+/// The file types a pad can take.
+pub const SOUND_EXTENSIONS: [&str; 4] = ["wav", "mp3", "ogg", "flac"];
 const MAX_IMPORT_SECONDS: usize = 30;
 
 /// Import errors suitable for display.
@@ -73,7 +75,7 @@ pub fn import_pad_file(
 /// Decodes a supported audio file to mono 48 kHz samples capped at 30 seconds.
 pub fn decode_file(path: &Path) -> Result<Vec<f32>, ImportError> {
     let extension = normalized_extension(path).ok_or(ImportError::UnsupportedExtension)?;
-    if !matches!(extension.as_str(), "wav" | "mp3" | "ogg" | "flac") {
+    if !SOUND_EXTENSIONS.contains(&extension.as_str()) {
         return Err(ImportError::UnsupportedExtension);
     }
 

@@ -96,9 +96,9 @@ describe('installing VB-CABLE', () => {
     expect(screen.queryByRole('button', { name: /Install VB-CABLE/ })).toBeNull()
   })
 
-  it('names VB-Audio on the About page', async () => {
+  it('names VB-Audio on the App page', async () => {
     await openAudioSettings(makeApi())
-    fireEvent.click(screen.getByRole('tab', { name: 'About' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'App' }))
     expect(screen.getByText(/Ringpad can install VB-CABLE for you/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'www.vb-cable.com' })).toBeTruthy()
   })
@@ -106,7 +106,7 @@ describe('installing VB-CABLE', () => {
   it('finishes the first setup step once the cable is in', async () => {
     await renderApp(makeApi({ firstRunDone: false, devices: noCableDevices() }))
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))
-    expect(screen.getByRole('button', { name: 'Skip' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Skip for now' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Install VB-CABLE' }))
     expect(await screen.findByText('Installed')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Next' }).className).toMatch(/primary/)

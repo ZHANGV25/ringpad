@@ -18,6 +18,17 @@ export interface AudioApp {
   peak: number
 }
 
+/** An app recording from a microphone right now. */
+export interface MicUser {
+  pid: number
+  exe: string
+  name: string
+  /** The microphone's name, as Windows lists it. */
+  mic: string
+  /** Whether that microphone is Ringpad's. */
+  ringpad: boolean
+}
+
 export type SourceSetting =
   | { kind: 'default' }
   | { kind: 'device'; id: string }
@@ -67,6 +78,8 @@ export interface Settings {
 export type EngineStatus =
   | { kind: 'starting' }
   | { kind: 'running'; sourceLabel: string }
+  /** The mic and clips work, but nothing is recorded until this app opens. */
+  | { kind: 'waiting'; sourceLabel: string }
   | { kind: 'stopped'; reason: string }
   | { kind: 'needsSetup'; reason: string }
 

@@ -43,6 +43,22 @@ pub struct AudioApp {
     pub peak: f32,
 }
 
+/// An app recording from a microphone right now.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MicUser {
+    /// Process id.
+    pub pid: u32,
+    /// Executable file name.
+    pub exe: String,
+    /// Display name.
+    pub name: String,
+    /// The microphone's name, as Windows lists it.
+    pub mic: String,
+    /// Whether that microphone is Ringpad's (the virtual cable's recording side).
+    pub ringpad: bool,
+}
+
 /// Clip metadata for the UI.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -126,6 +142,11 @@ pub enum EngineStatus {
     /// Audio is running.
     Running {
         /// User-visible source label.
+        source_label: String,
+    },
+    /// Audio runs (mic and clips play) but records nothing until the chosen app opens.
+    Waiting {
+        /// User-visible name of the app it waits for.
         source_label: String,
     },
     /// Audio is stopped.

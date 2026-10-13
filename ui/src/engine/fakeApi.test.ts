@@ -13,6 +13,20 @@ describe('fake engine', () => {
     await expect(api.saveClipToPad({ slot: 0 })).rejects.toThrow('No clip to save')
   })
 
+  it('has Discord pick up Ringpad’s mic a few seconds after the first look, in the dev preview', async () => {
+    let now = 1000
+    const api = createFakeApi({ now: () => now })
+    expect(await api.micUsers()).toEqual([])
+    now += 4001
+    expect((await api.micUsers()).map((user) => [user.name, user.ringpad])).toEqual([['Discord', true]])
+    api.dispose()
+    // Tests decide for themselves who is listening.
+    const quiet = createFakeApi({ now: () => now, startTimers: false })
+    await quiet.micUsers()
+    now += 10_000
+    expect(await quiet.micUsers()).toEqual([])
+  })
+
   it('refuses pad actions on empty pads and non-https links', async () => {
     const api = createFakeApi({ startTimers: false })
     await expect(api.playPad({ slot: 3 })).rejects.toThrow('Pad is empty')

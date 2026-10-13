@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { DEFAULT_PAD_HOTKEYS, type Hotkeys, type PadInfo, type Settings } from '../engine/types'
+import type { Hotkeys, PadInfo, Settings } from '../engine/types'
 import type { EngineApi, Unsubscribe } from '../engine/api'
 import { keyLabel } from '../keys'
 import { KeyChip } from '../components/controls'
@@ -20,11 +20,13 @@ interface PendingConflict {
 }
 
 const MAIN_KEYS: readonly MainHotkey[] = ['grab', 'send', 'sendAlt', 'stop', 'save', 'talk']
+/** The talk key lives with your voice, under Mic. */
+const SHOWN_KEYS: readonly MainHotkey[] = ['grab', 'send', 'stop', 'save', 'sendAlt']
 
 const MAIN_LABELS: Record<MainHotkey, string> = {
   grab: 'Clip',
   send: 'Send',
-  sendAlt: 'Send (second key)',
+  sendAlt: 'Also send',
   stop: 'Stop',
   save: 'Save to pad',
   talk: 'Talk',
@@ -36,41 +38,35 @@ interface HotkeysTabProps {
 }
 
 export function HotkeysTab({ settings, pads }: HotkeysTabProps) {
+  const filled = pads.flatMap((pad, slot) => (pad ? [{ pad, slot }] : []))
+  const hints: Partial<Record<MainHotkey, string>> = {
+    grab: `Grabs the last ${settings.grabSeconds} s`,
+    send: 'Plays the clip to your team',
+    stop: 'Stops whatever is playing',
+    save: 'Then press a pad’s key',
+  }
   return (
     <>
       <section className="group">
-        <span className="label">Actions</span>
+        <span className="label">Clips</span>
         <div className="hotkey-list">
-          {MAIN_KEYS.map((key) => (
-            <HotkeyRow
-              key={key}
-              label={MAIN_LABELS[key]}
-              target={{ kind: 'main', key }}
-              value={settings.hotkeys[key]}
-              hint={key === 'talk' ? 'Set it in Talk' : undefined}
-              readOnly={key === 'talk'}
-            />
+          {SHOWN_KEYS.map((key) => (
+            <HotkeyRow key={key} label={MAIN_LABELS[key]} hint={hints[key]} target={{ kind: 'main', key }} value={settings.hotkeys[key]} />
           ))}
         </div>
+        <span className="hint">Mouse side buttons work too.</span>
       </section>
       <section className="group">
         <span className="label">Pads</span>
-        <div className="hotkey-list">
-          {pads.map((pad, slot) => (
-            <HotkeyRow
-              key={slot}
-              label={pad?.name ?? `Pad ${slot + 1}`}
-              hint={padHint(pad, slot)}
-              target={{ kind: 'pad', slot }}
-              value={pad?.hotkey ?? DEFAULT_PAD_HOTKEYS[slot] ?? null}
-              readOnly={!pad}
-            />
-          ))}
-        </div>
-        <span className="hint">
-          Mouse side buttons work too. If a button does nothing, your mouse software may remap it; whatever it sends
-          shows up here when you press Change.
-        </span>
+        {filled.length > 0 ? (
+          <div className="hotkey-list">
+            {filled.map(({ pad, slot }) => (
+              <HotkeyRow key={slot} label={pad.name} hint={padHint(pad, slot)} target={{ kind: 'pad', slot }} value={pad.hotkey} />
+            ))}
+          </div>
+        ) : (
+          <span className="hint">Fill a pad to give it a key.</span>
+        )}
       </section>
     </>
   )
@@ -183,8 +179,7 @@ export function HotkeyRow({ label, target, value, hint, readOnly, clearable = tr
   )
 }
 
-function padHint(pad: PadInfo | null, slot: number): string | undefined {
-  if (!pad) return 'Empty: save a clip to this pad first'
+function padHint(pad: PadInfo, slot: number): string | undefined {
   return pad.name === `Pad ${slot + 1}` ? undefined : `Pad ${slot + 1}`
 }
 

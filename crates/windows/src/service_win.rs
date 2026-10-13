@@ -90,13 +90,15 @@ fn audio_thread(
             }
         }
         engine.set_time_seconds(started.elapsed().as_secs_f64());
-        if let Err(error) = drain_capture(
-            &streams.source.capture,
-            &mut source_bytes,
-            &mut source_mono,
-            |samples| engine.on_source(samples),
-        ) {
-            break format!("source capture failed: {error}");
+        if let Some(source) = streams.source.as_ref() {
+            if let Err(error) = drain_capture(
+                &source.capture,
+                &mut source_bytes,
+                &mut source_mono,
+                |samples| engine.on_source(samples),
+            ) {
+                break format!("source capture failed: {error}");
+            }
         }
         if let Some(mic) = streams.mic.as_ref() {
             if let Err(error) =
@@ -134,7 +136,8 @@ fn audio_thread(
 }
 
 struct Streams {
-    source: CaptureStream,
+    /// `None` while recording nothing (see `SourceSpec::Nothing`).
+    source: Option<CaptureStream>,
     mic: Option<CaptureStream>,
     virtual_mic: RenderStream,
     headphones: Option<RenderStream>,
@@ -174,15 +177,16 @@ fn open_streams(config: &ServiceConfig) -> Result<Streams, crate::BackendError> 
     })
 }
 
-fn open_source(source: &SourceSpec) -> Result<CaptureStream, crate::BackendError> {
+fn open_source(source: &SourceSpec) -> Result<Option<CaptureStream>, crate::BackendError> {
     match source {
+        SourceSpec::Nothing => Ok(None),
         SourceSpec::DefaultOutputLoopback => {
             let enumerator =
                 wasapi::DeviceEnumerator::new().map_err(crate::BackendError::from_wasapi)?;
             let device = enumerator
                 .get_default_device(&wasapi::Direction::Render)
                 .map_err(crate::BackendError::from_wasapi)?;
-            open_loopback_device(device)
+            open_loopback_device(device).map(Some)
         }
         SourceSpec::DeviceLoopback(id) => {
             let enumerator =
@@ -190,13 +194,13 @@ fn open_source(source: &SourceSpec) -> Result<CaptureStream, crate::BackendError
             let device = enumerator
                 .get_device(id)
                 .map_err(|_| crate::BackendError::DeviceNotFound(id.clone()))?;
-            open_loopback_device(device)
+            open_loopback_device(device).map(Some)
         }
         SourceSpec::App(exe) => {
             let pid = crate::sessions::resolve_app_pid(exe)?;
             let client = wasapi::AudioClient::new_application_loopback_client(pid, true)
                 .map_err(crate::BackendError::from_wasapi)?;
-            initialize_capture_client(client)
+            initialize_capture_client(client).map(Some)
         }
     }
 }
@@ -281,11 +285,12 @@ fn stream_mode() -> wasapi::StreamMode {
 }
 
 fn start_streams(streams: &Streams) -> Result<(), crate::BackendError> {
-    streams
-        .source
-        .client
-        .start_stream()
-        .map_err(crate::BackendError::from_wasapi)?;
+    if let Some(source) = streams.source.as_ref() {
+        source
+            .client
+            .start_stream()
+            .map_err(crate::BackendError::from_wasapi)?;
+    }
     if let Some(mic) = streams.mic.as_ref() {
         mic.client
             .start_stream()
@@ -306,7 +311,9 @@ fn start_streams(streams: &Streams) -> Result<(), crate::BackendError> {
 }
 
 fn stop_streams(streams: &Streams) {
-    let _ = streams.source.client.stop_stream();
+    if let Some(source) = streams.source.as_ref() {
+        let _ = source.client.stop_stream();
+    }
     if let Some(mic) = streams.mic.as_ref() {
         let _ = mic.client.stop_stream();
     }

@@ -34,12 +34,14 @@ fn main() {
             Some(vec!["--minimized"]),
         ))
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(setup)
         .on_window_event(window_state::on_window_event)
         .invoke_handler(tauri::generate_handler![
             commands::get_snapshot,
             commands::list_devices,
             commands::list_audio_apps,
+            commands::mic_users,
             commands::update_settings,
             commands::grab_clip,
             commands::preview_clip,
@@ -48,6 +50,7 @@ fn main() {
             commands::save_clip_to_pad,
             commands::play_pad,
             commands::import_pad,
+            commands::pick_sound_file,
             commands::rename_pad,
             commands::set_pad_volume,
             commands::set_pad_hotkey,

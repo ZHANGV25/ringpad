@@ -5,6 +5,8 @@
  */
 .main-shell {
   display: grid;
+  /* minmax(0, 1fr): a long status line must shrink, not widen the window's content. */
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   gap: 12px;
   height: 100%;
@@ -216,25 +218,30 @@
   font-weight: 600;
 }
 
-.clip-empty {
+/* No clip yet: the two keys, and what each does. */
+.clip-howto {
   display: flex;
   flex: 1;
   flex-direction: column;
-  align-items: flex-start;
   justify-content: center;
-  gap: 6px;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.clip-empty-title {
-  font-weight: 600;
-}
-
-.clip-empty .muted {
-  display: inline-flex;
-  flex-wrap: wrap;
+.clip-howto li {
+  display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 12px;
+  gap: 10px;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.clip-howto .key-chip {
+  min-width: 34px;
+  height: 26px;
+  font-size: 12.5px;
 }
 
 /* Three actions, each saying who hears it. */
@@ -273,6 +280,17 @@
 .clip-action:active .button {
   transform: scale(0.97);
   transition-duration: var(--dur-press);
+}
+
+/* A button's key sits inside it, small, in the button's own colour. */
+.clip-action .key-chip {
+  min-width: 20px;
+  height: 17px;
+  margin-left: 2px;
+  padding: 0 4px;
+  border-color: color-mix(in srgb, currentColor 40%, transparent);
+  color: inherit;
+  font-size: 10px;
 }
 
 .clip-action-note {

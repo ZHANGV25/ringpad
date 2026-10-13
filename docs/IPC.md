@@ -24,7 +24,7 @@ The UI calls Tauri commands with camelCase argument objects and listens to the e
 
 Talk settings and defaults: `micMode` `open`; `pressTalkKeys` `off`; `gameTalkKeys` `['v']` (1 to 3 key strings); `talkLeadMs` `100` (0 to 500); `talkTailMs` `250` (0 to 2000); `talkOnlyApp` `null` (an exe file name such as `VALORANT-Win64-Shipping.exe`; `null` means any app).
 
-`EngineStatus`: `{ kind: 'starting' }`, `{ kind: 'running', sourceLabel }`, `{ kind: 'stopped', reason }`, or `{ kind: 'needsSetup', reason }`.
+`EngineStatus`: `{ kind: 'starting' }`, `{ kind: 'running', sourceLabel }`, `{ kind: 'waiting', sourceLabel }`, `{ kind: 'stopped', reason }`, or `{ kind: 'needsSetup', reason }`. `waiting` means Ringpad records one app that is closed: audio still runs, so the mic passes through and clips and pads still play, and recording starts on its own when the app opens.
 
 `ClipInfo`: `id`, `seconds`, `peaks` with 120 values, `savedPath`.
 
@@ -43,6 +43,7 @@ Talk settings and defaults: `micMode` `open`; `pressTalkKeys` `off`; `gameTalkKe
 - `get_snapshot() -> Snapshot`
 - `list_devices() -> DeviceInfo[]`
 - `list_audio_apps() -> AudioApp[]`
+- `mic_users() -> MicUser[]`: apps recording from any microphone right now, from each input endpoint's active audio sessions. `MicUser`: `{ pid, exe, name, mic, ringpad }`; `mic` is the microphone's name and `ringpad` is true when it is Ringpad's (the recording side of the virtual cable Ringpad plays into, such as CABLE Output). Discord records in a call or on its Voice & Video page; games record with voice chat on. Setup uses it to tick off "Discord can hear Ringpad", or to say which other mic Discord is on.
 - `update_settings({ patch }) -> Settings`
 - `grab_clip() -> ClipInfo`
 - `preview_clip()`
@@ -51,6 +52,7 @@ Talk settings and defaults: `micMode` `open`; `pressTalkKeys` `off`; `gameTalkKe
 - `save_clip_to_pad({ slot }) -> PadInfo`
 - `play_pad({ slot })`
 - `import_pad({ slot, path }) -> PadInfo`
+- `pick_sound_file() -> string | null`: opens Windows' file picker for a WAV, MP3, OGG or FLAC file; `null` when it is closed without one. Clicking an empty pad with no clip calls it, then `import_pad`.
 - `rename_pad({ slot, name }) -> PadInfo`
 - `set_pad_volume({ slot, volume }) -> PadInfo`
 - `set_pad_hotkey({ slot, hotkey }) -> PadInfo`

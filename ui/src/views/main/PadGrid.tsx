@@ -20,8 +20,8 @@ interface PadGridProps {
 
 /**
  * Pads as keycaps, like a sampler. A pad presses down when it plays (by click or by its key) and
- * fills as it plays. An empty pad takes the current clip when clicked, and a saved clip visibly
- * drops into its pad.
+ * fills as it plays. An empty pad takes the current clip when clicked, or asks for a sound file
+ * when there is none; a saved clip visibly drops into its pad.
  */
 export function PadGrid({ pads, clip, playback, dragSlot }: PadGridProps) {
   const [menuSlot, setMenuSlot] = useState<number | null>(null)
@@ -32,7 +32,7 @@ export function PadGrid({ pads, clip, playback, dragSlot }: PadGridProps) {
     <section className="pads" aria-label="Pads">
       <div className="pads-head">
         <span className="label">Pads</span>
-        <span className="muted small">{padsHint(filled, clip !== null)}</span>
+        <span className="muted small">{padsHint(filled)}</span>
       </div>
       <div className="pad-grid">
         {pads.map((pad, slot) => (
@@ -52,9 +52,9 @@ export function PadGrid({ pads, clip, playback, dragSlot }: PadGridProps) {
   )
 }
 
-export function padsHint(filled: number, hasClip: boolean): string {
-  if (filled === 0) return hasClip ? 'Click a pad to keep this clip' : 'Keep your best clips here'
-  return hasClip ? 'Click an empty pad to keep the clip' : 'Click a pad or press its key'
+/** Empty pads say what a click does, so the hint only says how to play one. */
+export function padsHint(filled: number): string {
+  return filled === 0 ? 'Fill a pad, then press its key' : 'Click a pad or press its key'
 }
 
 interface PadKeyProps {
@@ -77,9 +77,10 @@ function PadKey({ pad, slot, canTakeClip, dragging, playing, onMenu }: PadKeyPro
   const press = () => {
     if (pad) void api.playPad({ slot })
     else if (canTakeClip) void api.saveClipToPad({ slot })
+    else void api.pickSoundFile().then((path) => (path ? api.importPad({ slot, path }) : null))
   }
-  const name = dragging ? 'Drop here' : (pad?.name ?? 'Empty')
-  const label = pad ? `Play ${pad.name}` : canTakeClip ? `Keep the clip on pad ${slot + 1}` : `Pad ${slot + 1}, empty`
+  const name = dragging ? 'Drop here' : (pad?.name ?? (canTakeClip ? 'Save clip' : 'Add sound'))
+  const label = pad ? `Play ${pad.name}` : canTakeClip ? `Save the clip to pad ${slot + 1}` : `Add a sound to pad ${slot + 1}`
   const state = pad ? 'filled' : canTakeClip ? 'empty open' : 'empty'
   return (
     <div
@@ -96,7 +97,7 @@ function PadKey({ pad, slot, canTakeClip, dragging, playing, onMenu }: PadKeyPro
         type="button"
         className="pad-cap"
         aria-label={label}
-        title={pad ? `${pad.name} (right-click for options)` : 'Keep a clip here, or drop a sound file on it'}
+        title={pad ? `${pad.name} (right-click for options)` : canTakeClip ? 'Save the clip here' : 'Pick a sound file, or drop one here'}
         onClick={press}
       >
         <span className="pad-fill" ref={fill} aria-hidden="true" />

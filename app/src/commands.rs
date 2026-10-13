@@ -14,7 +14,7 @@ use crate::command_support::{
     next_clip_id, pad_by_slot, set_status, slot_one_based, string_error, update_saved_pad,
     virtual_capture_hint,
 };
-use crate::dto::{self, AudioApp, ClipInfo, DeviceInfo, PadInfo, Snapshot};
+use crate::dto::{self, AudioApp, ClipInfo, DeviceInfo, MicUser, PadInfo, Snapshot};
 use crate::import;
 use crate::runtime::AppState;
 use crate::settings;
@@ -79,6 +79,44 @@ pub async fn list_audio_apps() -> Result<Vec<AudioApp>, String> {
         .into_iter()
         .map(AudioApp::from)
         .collect())
+}
+
+/// Apps recording from any microphone right now, and whether it is Ringpad's (the recording
+/// side of the virtual cable Ringpad plays into, such as "CABLE Output"). Discord records
+/// while in a call or on its Voice & Video page. Sessions an app has stopped using linger
+/// in Windows' list, so only active ones count.
+#[tauri::command]
+pub async fn mic_users(state: State<'_, AppState>) -> Result<Vec<MicUser>, String> {
+    let chosen = state
+        .settings
+        .lock()
+        .map_err(lock_error)?
+        .virtual_output
+        .clone();
+    let devices = ringpad_windows::devices::list_devices().map_err(string_error)?;
+    let ringpad_mic = ringpad_windows::devices::pick_virtual_output(&devices, chosen.as_deref())
+        .ok()
+        .and_then(|output| ringpad_windows::devices::matching_capture_side(&output, &devices))
+        .map(|capture| capture.id);
+    let mut users = Vec::new();
+    for mic in devices
+        .iter()
+        .filter(|device| device.direction == ringpad_windows::DeviceDirection::Input)
+    {
+        let apps = ringpad_windows::sessions::apps_using_device(&mic.id).map_err(string_error)?;
+        users.extend(
+            apps.into_iter()
+                .filter(|app| app.active)
+                .map(|app| MicUser {
+                    pid: app.pid,
+                    exe: app.exe_name,
+                    name: app.display_name,
+                    mic: mic.name.clone(),
+                    ringpad: ringpad_mic.as_deref() == Some(mic.id.as_str()),
+                }),
+        );
+    }
+    Ok(users)
 }
 
 /// Updates settings by JSON patch.
@@ -281,6 +319,25 @@ pub async fn import_pad(
     }
     emit_pads(&app, &state)?;
     pad_by_slot(&state, one)
+}
+
+/// Asks for a sound file to put on a pad. `None` when the picker is closed without one.
+#[tauri::command]
+pub async fn pick_sound_file(window: tauri::WebviewWindow) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    window
+        .dialog()
+        .file()
+        .set_parent(&window)
+        .set_title("Add a sound")
+        .add_filter("Sound", &import::SOUND_EXTENSIONS)
+        .blocking_pick_file()
+        .map(|file| {
+            file.into_path()
+                .map(|path| path.to_string_lossy().into_owned())
+        })
+        .transpose()
+        .map_err(string_error)
 }
 
 /// Renames a filled pad.

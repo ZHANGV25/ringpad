@@ -291,6 +291,12 @@ fn validate_and_clamp(mut settings: Settings) -> Result<Settings, SettingsError>
         .talk_only_app
         .and_then(|app| non_empty_trimmed(app.as_str()));
     settings.game_talk_keys = clean_game_talk_keys(settings.game_talk_keys);
+    // Older settings saved apps under their executable's name ("VALORANT-Win64-Shipping").
+    if let SourceSetting::App { exe, name } = &mut settings.source {
+        if let Some(known) = ringpad_windows::sessions::known_app_name(exe) {
+            *name = known.to_string();
+        }
+    }
     validate_main_talk_conflicts(&settings)?;
     Ok(settings)
 }
@@ -409,6 +415,22 @@ mod tests {
         assert!(json.contains("talk"));
         let back: Settings = serde_json::from_str(&json).expect("deserialize settings");
         assert_eq!(back, Settings::default());
+    }
+
+    #[test]
+    fn renames_apps_saved_under_their_executable_name() {
+        let patched = apply_patch(
+            &Settings::default(),
+            serde_json::json!({"source": {"kind": "app", "exe": "VALORANT-Win64-Shipping.exe", "name": "VALORANT-Win64-Shipping"}}),
+        )
+        .expect("patch");
+        assert_eq!(
+            patched.source,
+            SourceSetting::App {
+                exe: "VALORANT-Win64-Shipping.exe".to_string(),
+                name: "Valorant".to_string(),
+            }
+        );
     }
 
     #[test]

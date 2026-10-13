@@ -4,7 +4,9 @@ use ringpad_windows::devices::{
 };
 use ringpad_windows::hotkeys::{key_name_from_vkey, mouse_events_from_button_flags};
 use ringpad_windows::mixdown::{mono_to_stereo_bytes, stereo_bytes_to_mono};
-use ringpad_windows::sessions::{merge_audio_apps, resolve_app_pid_from, AudioApp, SessionError};
+use ringpad_windows::sessions::{
+    known_app_name, merge_audio_apps, resolve_app_pid_from, AudioApp, SessionError,
+};
 use ringpad_windows::watcher::{snapshot_changed, DeviceSnapshot};
 use ringpad_windows::{ServiceConfig, SourceSpec};
 
@@ -151,6 +153,38 @@ fn resolve_app_pid_prefers_active_session_then_any_session_then_process() {
         resolve_app_pid_from("missing.exe", &[], &[]),
         Err(SessionError::AppNotRunning("missing.exe".to_string()))
     );
+}
+
+#[test]
+fn names_well_known_apps_by_executable() {
+    assert_eq!(
+        known_app_name("VALORANT-Win64-Shipping.exe"),
+        Some("Valorant")
+    );
+    assert_eq!(
+        known_app_name("valorant-win64-shipping.EXE"),
+        Some("Valorant")
+    );
+    assert_eq!(known_app_name("cs2.exe"), Some("Counter-Strike 2"));
+    assert_eq!(known_app_name("notepad.exe"), None);
+}
+
+#[test]
+fn recording_nothing_is_never_the_headphones() {
+    let config = ServiceConfig {
+        source: SourceSpec::Nothing,
+        virtual_output_id: "cable".to_string(),
+        mic_id: Some("mic".to_string()),
+        headphones_id: Some("phones".to_string()),
+        send_volume: 0.5,
+        monitor_volume: 0.6,
+        ducking: true,
+        history_seconds: 30.0,
+        forward_source: true,
+    };
+    let engine = config.engine_config(Some("phones"));
+    assert!(!engine.recording_headphones);
+    assert!(engine.forward_source);
 }
 
 #[test]

@@ -55,6 +55,8 @@ pub struct AppRuntime {
     running_key: Mutex<Option<String>>,
     /// What the running service records, for the status line.
     label: Mutex<String>,
+    /// The app the running service waits for, while it records nothing.
+    waiting_for: Mutex<Option<String>>,
     /// Current mic gate value to apply across audio restarts.
     mic_open: AtomicBool,
 }
@@ -88,6 +90,7 @@ impl AppState {
                 retry: Mutex::new(None),
                 running_key: Mutex::new(None),
                 label: Mutex::new(String::new()),
+                waiting_for: Mutex::new(None),
                 mic_open: AtomicBool::new(mic_open),
             }),
             key_capture: AtomicBool::new(false),
@@ -183,9 +186,15 @@ impl AppRuntime {
         Some(self.start_planned(settings, paths, pads, devices))
     }
 
-    /// Restarts retryable audio sources if one is pending.
+    /// Restarts retryable audio sources if one is pending. While Ringpad waits for an app
+    /// that is still closed, the running service is left alone, so the mic never drops out.
     pub fn retry_audio(&self, paths: &AppPaths, pads: &PadsStore) -> Option<EngineStatus> {
         let settings = self.retry.lock().ok().and_then(|retry| retry.clone())?;
+        if let SourceSetting::App { exe, .. } = &settings.source {
+            if self.is_waiting() && !ringpad_windows::sessions::app_running(exe) {
+                return None;
+            }
+        }
         Some(self.start_audio(&settings, paths, pads))
     }
 
@@ -193,15 +202,19 @@ impl AppRuntime {
     pub fn audio_status(&self) -> Option<EngineStatus> {
         let audio = self.audio.lock().ok()?;
         let status = audio.as_ref()?.status();
-        Some(match status {
-            ringpad_windows::ServiceStatus::Running => EngineStatus::Running {
+        let waiting_for = self.waiting_for.lock().ok().and_then(|app| app.clone());
+        Some(match (status, waiting_for) {
+            (ringpad_windows::ServiceStatus::Running, Some(source_label)) => {
+                EngineStatus::Waiting { source_label }
+            }
+            (ringpad_windows::ServiceStatus::Running, None) => EngineStatus::Running {
                 source_label: self
                     .label
                     .lock()
                     .map(|label| label.clone())
                     .unwrap_or_default(),
             },
-            ringpad_windows::ServiceStatus::Stopped { reason } => stopped(reason),
+            (ringpad_windows::ServiceStatus::Stopped { reason }, _) => stopped(reason),
         })
     }
 
@@ -217,33 +230,80 @@ impl AppRuntime {
             Ok(plan) => plan,
             Err(status) => return status,
         };
-        match AudioService::start(plan.config) {
+        match AudioService::start(plan.config.clone()) {
             Ok((service, handle)) => {
-                self.replace_session(handle, settings, paths, pads);
-                if let Ok(mut audio) = self.audio.lock() {
-                    *audio = Some(service);
-                }
-                if let Ok(mut running) = self.running_key.lock() {
-                    *running = Some(plan.key);
-                }
-                if let Ok(mut label) = self.label.lock() {
-                    label.clone_from(&plan.label);
-                }
+                self.adopt(service, handle, &plan, None, settings, paths, pads);
                 self.clear_retry();
                 EngineStatus::Running {
                     source_label: plan.label,
                 }
             }
             Err(BackendError::AppNotRunning(_exe)) => {
+                // Run without recording until the app opens, so the mic and clips still play.
                 self.set_retry(settings.clone());
-                stopped(format!("Waiting for {}", plan.label))
+                let idle = ServiceConfig {
+                    source: SourceSpec::Nothing,
+                    ..plan.config.clone()
+                };
+                match AudioService::start(idle) {
+                    Ok((service, handle)) => {
+                        let label = plan.label.clone();
+                        self.adopt(
+                            service,
+                            handle,
+                            &plan,
+                            Some(label.clone()),
+                            settings,
+                            paths,
+                            pads,
+                        );
+                        EngineStatus::Waiting {
+                            source_label: label,
+                        }
+                    }
+                    Err(error) => stopped(error.to_string()),
+                }
             }
             Err(error) => stopped(error.to_string()),
         }
     }
 
+    /// Takes over a freshly started service and its engine handle.
+    #[allow(clippy::too_many_arguments)]
+    fn adopt(
+        &self,
+        service: AudioService,
+        handle: EngineHandle,
+        plan: &AudioPlan,
+        waiting_for: Option<String>,
+        settings: &Settings,
+        paths: &AppPaths,
+        pads: &PadsStore,
+    ) {
+        self.replace_session(handle, settings, paths, pads);
+        if let Ok(mut audio) = self.audio.lock() {
+            *audio = Some(service);
+        }
+        if let Ok(mut running) = self.running_key.lock() {
+            *running = Some(plan.key.clone());
+        }
+        if let Ok(mut label) = self.label.lock() {
+            label.clone_from(&plan.label);
+        }
+        if let Ok(mut waiting) = self.waiting_for.lock() {
+            *waiting = waiting_for;
+        }
+    }
+
+    fn is_waiting(&self) -> bool {
+        self.waiting_for.lock().is_ok_and(|app| app.is_some())
+    }
+
     fn is_running(&self) -> bool {
-        matches!(self.audio_status(), Some(EngineStatus::Running { .. }))
+        matches!(
+            self.audio_status(),
+            Some(EngineStatus::Running { .. } | EngineStatus::Waiting { .. })
+        )
     }
 
     fn stop_audio(&self) {
@@ -254,6 +314,9 @@ impl AppRuntime {
         }
         if let Ok(mut running) = self.running_key.lock() {
             *running = None;
+        }
+        if let Ok(mut waiting) = self.waiting_for.lock() {
+            *waiting = None;
         }
     }
 
@@ -379,7 +442,9 @@ fn source_label(source: &SourceSetting, devices: &[DeviceInfo]) -> String {
             |device| device.name.clone(),
         ),
         SourceSetting::App { name, exe } => {
-            if name.trim().is_empty() {
+            if let Some(known) = ringpad_windows::sessions::known_app_name(exe) {
+                known.to_string()
+            } else if name.trim().is_empty() {
                 exe.clone()
             } else {
                 name.clone()

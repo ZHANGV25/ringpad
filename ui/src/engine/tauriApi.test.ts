@@ -53,6 +53,7 @@ describe('tauri api', () => {
       [() => tauriApi.saveClipToPad({ slot: 1 }), 'save_clip_to_pad', { slot: 1 }],
       [() => tauriApi.playPad({ slot: 2 }), 'play_pad', { slot: 2 }],
       [() => tauriApi.importPad({ slot: 0, path: 'a.wav' }), 'import_pad', { slot: 0, path: 'a.wav' }],
+      [() => tauriApi.pickSoundFile(), 'pick_sound_file'],
       [() => tauriApi.renamePad({ slot: 0, name: 'A' }), 'rename_pad', { slot: 0, name: 'A' }],
       [() => tauriApi.setPadVolume({ slot: 0, volume: 0.5 }), 'set_pad_volume', { slot: 0, volume: 0.5 }],
       [() => tauriApi.setPadHotkey({ slot: 0, hotkey: null }), 'set_pad_hotkey', { slot: 0, hotkey: null }],
@@ -64,6 +65,7 @@ describe('tauri api', () => {
       [() => tauriApi.openClipsFolder(), 'open_clips_folder'],
       [() => tauriApi.testTalkKeys(), 'test_talk_keys'],
       [() => tauriApi.installVirtualMic(), 'install_virtual_mic'],
+      [() => tauriApi.micUsers(), 'mic_users'],
     ]
     for (const [run, name, args] of calls) {
       await run()

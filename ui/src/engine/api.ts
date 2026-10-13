@@ -5,6 +5,7 @@ import type {
   DeviceInfo,
   EngineStatus,
   Meters,
+  MicUser,
   PadInfo,
   Playback,
   Settings,
@@ -30,6 +31,8 @@ export interface EngineApi {
   getSnapshot(): Promise<Snapshot>
   listDevices(): Promise<DeviceInfo[]>
   listAudioApps(): Promise<AudioApp[]>
+  /** Apps recording from a microphone right now, such as Discord in a call. */
+  micUsers(): Promise<MicUser[]>
   updateSettings(args: { patch: SettingsPatch }): Promise<Settings>
   grabClip(): Promise<ClipInfo>
   previewClip(): Promise<void>
@@ -38,6 +41,8 @@ export interface EngineApi {
   saveClipToPad(args: { slot: number }): Promise<PadInfo>
   playPad(args: { slot: number }): Promise<void>
   importPad(args: { slot: number; path: string }): Promise<PadInfo>
+  /** Opens Windows' file picker for a sound; null when it is closed without one. */
+  pickSoundFile(): Promise<string | null>
   renamePad(args: { slot: number; name: string }): Promise<PadInfo>
   setPadVolume(args: { slot: number; volume: number }): Promise<PadInfo>
   setPadHotkey(args: { slot: number; hotkey: string | null }): Promise<PadInfo>

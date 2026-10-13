@@ -2,30 +2,29 @@ import { useState } from 'react'
 import { IconButton, Segmented } from '../components/controls'
 import { BackIcon } from '../components/icons'
 import { useEngine } from '../state/EngineProvider'
-import { AudioTab } from './SettingsAudio'
+import { ClipsTab } from './SettingsClips'
 import { HotkeysTab } from './SettingsHotkeys'
-import { AboutTab, GeneralTab, PadsTab } from './SettingsMisc'
-import { TalkTab } from './SettingsTalk'
+import { MicTab } from './SettingsMic'
+import { AppTab } from './SettingsMisc'
 
-type Tab = 'audio' | 'talk' | 'hotkeys' | 'pads' | 'general' | 'about'
+type Tab = 'mic' | 'clips' | 'keys' | 'app'
 
 interface Props {
   onBack: () => void
 }
 
+/** Grouped by what you came to do: get heard, change what gets clipped, change keys, the rest. */
 const TAB_LABELS: Record<Tab, string> = {
-  audio: 'Audio',
-  talk: 'Talk',
-  hotkeys: 'Hotkeys',
-  pads: 'Pads',
-  general: 'General',
-  about: 'About',
+  mic: 'Mic',
+  clips: 'Clips',
+  keys: 'Keys',
+  app: 'App',
 }
-const TABS: readonly Tab[] = ['audio', 'talk', 'hotkeys', 'pads', 'general', 'about']
+const TABS: readonly Tab[] = ['mic', 'clips', 'keys', 'app']
 
 export function SettingsPage({ onBack }: Props) {
   const { state } = useEngine()
-  const [tab, setTab] = useState<Tab>('audio')
+  const [tab, setTab] = useState<Tab>('mic')
   if (!state.settings) {
     return null
   }
@@ -40,12 +39,10 @@ export function SettingsPage({ onBack }: Props) {
       </header>
       <Segmented label="Settings sections" options={TABS} value={tab} labels={TAB_LABELS} onChange={setTab} variant="tabs" />
       <div className="settings-body">
-        {tab === 'audio' ? <AudioTab settings={state.settings} /> : null}
-        {tab === 'talk' ? <TalkTab settings={state.settings} talk={state.talk} /> : null}
-        {tab === 'hotkeys' ? <HotkeysTab settings={state.settings} pads={state.pads} /> : null}
-        {tab === 'pads' ? <PadsTab pads={state.pads} /> : null}
-        {tab === 'general' ? <GeneralTab settings={state.settings} /> : null}
-        {tab === 'about' ? <AboutTab /> : null}
+        {tab === 'mic' ? <MicTab settings={state.settings} talk={state.talk} /> : null}
+        {tab === 'clips' ? <ClipsTab settings={state.settings} /> : null}
+        {tab === 'keys' ? <HotkeysTab settings={state.settings} pads={state.pads} /> : null}
+        {tab === 'app' ? <AppTab settings={state.settings} /> : null}
       </div>
     </main>
   )

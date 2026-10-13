@@ -1,60 +1,20 @@
 import { THEME_PREFERENCES, applyTheme, type ThemePreference } from '../theme'
-import type { PadInfo, Settings, SettingsPatch } from '../engine/types'
-import { IconButton, KeyChip, Segmented, Slider, Toggle } from '../components/controls'
-import { ExternalLinkIcon, TrashIcon } from '../components/icons'
+import type { Settings, SettingsPatch } from '../engine/types'
+import { Segmented, Toggle } from '../components/controls'
+import { ExternalLinkIcon } from '../components/icons'
 import { Panda } from '../components/panda/Panda'
 import { useEngine } from '../state/EngineProvider'
 import { VbCableCredit } from './CableInstall'
 
 const THEME_LABELS: Record<ThemePreference, string> = { system: 'System', light: 'Light', dark: 'Dark' }
 const REPO_URL = 'https://github.com/ZHANGV25/ringpad'
-const RETENTION_OPTIONS: ReadonlyArray<{ days: number; label: string }> = [
-  { days: 1, label: '1 day' },
-  { days: 7, label: '7 days' },
-  { days: 30, label: '30 days' },
-  { days: 0, label: 'Forever' },
-]
 
-interface PadsTabProps {
-  pads: Array<PadInfo | null>
-}
-
-export function PadsTab({ pads }: PadsTabProps) {
-  const { api } = useEngine()
-  return (
-    <section className="group">
-      <span className="hint">Drop an audio file on a pad in the main window, or save a clip to it.</span>
-      <div>
-        {pads.map((pad, slot) => (
-          <div className={`pad-row ${pad ? '' : 'empty'}`} key={slot}>
-            <div className="pad-row-top">
-              <span className="slot-number">{slot + 1}</span>
-              <span className="pad-name">{pad?.name ?? 'Empty'}</span>
-              {pad ? <span className="muted small numeric">{pad.seconds.toFixed(1)} s</span> : null}
-              {pad ? <KeyChip name={pad.hotkey} /> : null}
-              {pad ? (
-                <IconButton label={`Clear ${pad.name}`} onClick={() => void api.clearPad({ slot })}>
-                  <TrashIcon />
-                </IconButton>
-              ) : null}
-            </div>
-            {pad ? (
-              <div className="pad-row-bottom">
-                <Slider label="Volume" value={pad.volume} min={0} max={1} step={0.01} percent onChange={(volume) => void api.setPadVolume({ slot, volume })} />
-              </div>
-            ) : null}
-          </div>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-interface GeneralTabProps {
+interface AppTabProps {
   settings: Settings
 }
 
-export function GeneralTab({ settings }: GeneralTabProps) {
+/** How Ringpad looks and starts, and what it is. */
+export function AppTab({ settings }: AppTabProps) {
   const { api } = useEngine()
   const update = (patch: SettingsPatch) => void api.updateSettings({ patch })
   return (
@@ -82,34 +42,12 @@ export function GeneralTab({ settings }: GeneralTabProps) {
           onChange={(startMinimized) => update({ startMinimized })}
         />
       </section>
-      <section className="group">
-        <span className="label">Clips</span>
-        <label className="slider-row">
-          <span>Keep clips for</span>
-          <select
-            aria-label="Keep clips for"
-            value={settings.clipRetentionDays}
-            onChange={(event) => update({ clipRetentionDays: Number(event.currentTarget.value) })}
-          >
-            {RETENTION_OPTIONS.map((option) => (
-              <option key={option.days} value={option.days}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <span />
-        </label>
-        <div className="inline-control">
-          <button type="button" className="button small" onClick={() => void api.openClipsFolder()}>
-            Open clips folder
-          </button>
-        </div>
-      </section>
+      <About />
     </>
   )
 }
 
-export function AboutTab() {
+function About() {
   const { api, state } = useEngine()
   return (
     <section className="group about-panel">

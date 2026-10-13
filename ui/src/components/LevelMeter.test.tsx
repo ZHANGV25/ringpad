@@ -28,7 +28,7 @@ describe('meterPosition', () => {
 describe('LevelMeter', () => {
   it('rises at once, then falls back slowly with the peak held', async () => {
     const api = await renderApp()
-    const meter = screen.getByRole('meter', { name: 'What teammates hear' })
+    const meter = screen.getByRole('meter', { name: 'What your team hears' })
     const fill = meter.querySelector('.level-fill') as HTMLElement
     const peak = meter.querySelector('.level-peak') as HTMLElement
     const scale = () => Number(/scaleX\(([\d.]+)\)/.exec(fill.style.transform)?.[1] ?? 0)

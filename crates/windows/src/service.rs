@@ -29,6 +29,8 @@ pub enum SourceSpec {
     DeviceLoopback(String),
     /// Capture a process tree by executable name.
     App(String),
+    /// Record nothing. Used while the chosen app is closed, so the mic and clips still play.
+    Nothing,
 }
 
 /// Audio-service configuration.
@@ -68,7 +70,7 @@ impl ServiceConfig {
         let recorded_output = match &self.source {
             SourceSpec::DefaultOutputLoopback => default_output_id,
             SourceSpec::DeviceLoopback(id) => Some(id.as_str()),
-            SourceSpec::App(_) => None,
+            SourceSpec::App(_) | SourceSpec::Nothing => None,
         };
         config.recording_headphones =
             recorded_output.is_some() && recorded_output == self.headphones_id.as_deref();

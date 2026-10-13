@@ -6,7 +6,7 @@ another plays it into your mic. It also has eight pads for your own sounds.
 
 <p>
   <img src="docs/images/main-light.png" width="300" alt="Ringpad main window in the light theme, sending a clip">
-  <img src="docs/images/main-dark.png" width="300" alt="Ringpad main window in the dark theme">
+  <img src="docs/images/main-dark.png" width="300" alt="Ringpad main window in the dark theme, showing its two keys">
 </p>
 
 Free and open source (MIT). Windows 10 and 11. Everything runs on your PC.
@@ -40,9 +40,12 @@ Ringpad and takes one click. Voicemod's and VoiceMeeter's virtual devices work t
    only, with no admin prompt. Windows may say it "protected your PC" because the installer is
    not signed yet: choose **More info**, then **Run anyway**.
 2. Ringpad opens a short setup. If your PC has no virtual mic, press **Install VB-CABLE** and click
-   **Yes** when Windows asks. Then it shows which mic to pick and your two keys.
+   **Yes** when Windows asks. Then it shows the one setting to change in Discord or your game, and
+   ticks it off when that app is using Ringpad's mic.
 3. In Discord or your game, set your **microphone** (input device) to the cable's output, for
    example **CABLE Output (VB-Audio Virtual Cable)**.
+4. Try your keys: **F8** clips what you just heard, **F7** plays it to your team. To keep a sound,
+   click an empty pad: it takes the clip, or asks for a sound file when there is no clip.
 
 That's it. Your voice still reaches your team: Ringpad passes your real mic through the same
 cable. [docs/SETUP.md](docs/SETUP.md) has step-by-step setup for Discord and Valorant, how to
@@ -58,7 +61,7 @@ record only voices, and fixes for common problems.
 | F6, then a pad key | Save the clip to that pad |
 | F1 to F4 | Play pads 1 to 4 (pads 5 to 8 have no key until you set one) |
 
-Change any of them in **Settings > Hotkeys**, including mouse side buttons. Keys work while the
+Change any of them in **Settings > Keys**, including mouse side buttons. Keys work while the
 game has focus and while you hold movement keys. Ringpad reads them with Raw Input, the way games
 do, so it adds no input lag and never blocks a key.
 
@@ -66,7 +69,7 @@ do, so it adds no input lag and never blocks a key.
 
 - Ringpad records only audio your PC already plays, and keeps it in memory until you clip it.
 - Clips and pads stay on your PC in `%APPDATA%\Ringpad`. Clips are deleted after 7 days; change
-  that in **Settings > General**.
+  that in **Settings > Clips**.
 - No accounts, no telemetry, no network calls. The only links it opens are the ones you click.
 
 ## Use it kindly

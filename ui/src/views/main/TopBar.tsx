@@ -34,6 +34,7 @@ export function TopBar({ status, onSettings }: TopBarProps) {
 
 export function statusText(status: EngineStatus): string {
   if (status.kind === 'running') return `Listening to ${status.sourceLabel}`
+  if (status.kind === 'waiting') return `Waiting for ${status.sourceLabel} to open`
   if (status.kind === 'starting') return 'Starting'
   return status.reason
 }

@@ -11,7 +11,7 @@ interface FooterProps {
 const readOut = (meters: Meters) => meters.outgoing
 
 /**
- * What your teammates hear: one meter for everything going into the virtual mic (your voice and
+ * What your team hears: one meter for everything going into the virtual mic (your voice and
  * clips), whether the mic is open, and how loud clips are for them.
  */
 export function Footer({ settings }: FooterProps) {
@@ -21,13 +21,13 @@ export function Footer({ settings }: FooterProps) {
   return (
     <footer className="footer">
       <div className="footer-head">
-        <span className="label">Teammates hear</span>
+        <span className="label">Your team hears</span>
         <span className="talk-status">
           {showMic ? <span className={`status-chip ${state.talk.micOpen ? 'filled' : 'outline'}`}>{state.talk.micOpen ? 'Mic on' : 'Mic off'}</span> : null}
           {holding ? <span className="status-chip outline">Holding {holding}</span> : null}
         </span>
       </div>
-      <LevelMeter label="What teammates hear" read={readOut} className="out-meter" />
+      <LevelMeter label="What your team hears" read={readOut} className="out-meter" />
       {state.talk.blocked ? (
         <span className="meter-error" role="alert">
           {state.talk.blocked}
