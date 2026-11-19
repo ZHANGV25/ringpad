@@ -101,7 +101,12 @@ pub fn decode_file(path: &Path) -> Result<Vec<f32>, ImportError> {
     let mut decoder = symphonia::default::get_codecs()
         .make(&track.codec_params, &DecoderOptions::default())
         .map_err(map_probe_error)?;
+    let cap = IMPORT_RATE as usize * MAX_IMPORT_SECONDS;
     let mut out = Vec::new();
+    // Samples at the file's own rate, resampled in one pass so the time grid never restarts at a
+    // packet boundary (restarting it nudges timing by a fraction of a sample at every packet).
+    let mut pending = Vec::new();
+    let mut pending_rate = None;
 
     loop {
         let packet = match format.next_packet() {
@@ -125,19 +130,34 @@ pub fn decode_file(path: &Path) -> Result<Vec<f32>, ImportError> {
         let channels = spec.channels.count();
         let mut buffer = SampleBuffer::<f32>::new(decoded.capacity() as u64, spec);
         buffer.copy_interleaved_ref(decoded);
-        let mono = to_mono(buffer.samples(), channels);
-        append_resampled(&mut out, &mono, spec.rate);
-        if out.len() >= IMPORT_RATE as usize * MAX_IMPORT_SECONDS {
-            out.truncate(IMPORT_RATE as usize * MAX_IMPORT_SECONDS);
+        if let Some(rate) = pending_rate.filter(|rate| *rate != spec.rate) {
+            append_resampled(&mut out, &pending, rate);
+            pending.clear();
+        }
+        pending_rate = Some(spec.rate);
+        pending.extend(to_mono(buffer.samples(), channels));
+        if out.len() + resampled_len(pending.len(), spec.rate) >= cap {
             break;
         }
     }
+    if let Some(rate) = pending_rate {
+        append_resampled(&mut out, &pending, rate);
+    }
+    out.truncate(cap);
 
     if out.is_empty() {
         Err(ImportError::NoAudio)
     } else {
         Ok(out)
     }
+}
+
+/// How many 48 kHz samples `len` samples at `rate` become.
+fn resampled_len(len: usize, rate: u32) -> usize {
+    if rate == 0 {
+        return 0;
+    }
+    (len as u64 * u64::from(IMPORT_RATE) / u64::from(rate)) as usize
 }
 
 fn append_resampled(out: &mut Vec<f32>, mono: &[f32], rate: u32) {
@@ -179,6 +199,63 @@ mod tests {
         import_pad_file(&source, 1, dir.path(), &mut bank, &mut store).expect("import");
         assert!(bank.get(1).expect("bounds").is_some());
         assert!(dir.path().join("slot1.wav").exists());
+    }
+
+    /// Pitch over the middle half of `samples` (48 kHz): rising zero crossings, placed between
+    /// samples by interpolation, divided by the time from the first to the last one.
+    fn pitch_hz(samples: &[f32]) -> f32 {
+        let start = samples.len() / 4;
+        let middle = &samples[start..samples.len() * 3 / 4];
+        let rises: Vec<f32> = middle
+            .windows(2)
+            .enumerate()
+            .filter(|(_, pair)| pair[0] < 0.0 && pair[1] >= 0.0)
+            .map(|(i, pair)| i as f32 + pair[0] / (pair[0] - pair[1]))
+            .collect();
+        let (Some(first), Some(last)) = (rises.first(), rises.last()) else {
+            return 0.0;
+        };
+        (rises.len() - 1) as f32 * IMPORT_RATE as f32 / (last - first)
+    }
+
+    /// Largest jump between neighbouring samples over the middle half: a click shows up here.
+    fn largest_step(samples: &[f32]) -> f32 {
+        samples[samples.len() / 4..samples.len() * 3 / 4]
+            .windows(2)
+            .map(|pair| (pair[1] - pair[0]).abs())
+            .fold(0.0, f32::max)
+    }
+
+    #[test]
+    fn a_44k1_mp3_keeps_its_speed_and_pitch() {
+        // 1 s of a 440 Hz sine at 44.1 kHz, stereo, 64 kbps (made with ffmpeg's sine source).
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/tone-440hz-44k1.mp3");
+        let samples = decode_file(&path).expect("decode mp3");
+        // MP3 adds encoder delay and padding (a few ms at each end), never a different length.
+        let seconds = samples.len() as f32 / IMPORT_RATE as f32;
+        assert!((1.0..1.1).contains(&seconds), "{seconds} s");
+        let pitch = pitch_hz(&samples);
+        assert!((pitch - 440.0).abs() < 0.5, "{pitch} Hz");
+    }
+
+    #[test]
+    fn a_44k1_wav_keeps_its_length_and_pitch_with_no_clicks() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("tone.wav");
+        let tone: Vec<f32> = (0..44_100)
+            .map(|i| 0.5 * (std::f32::consts::TAU * 440.0 * i as f32 / 44_100.0).sin())
+            .collect();
+        save_wav(&tone, 44_100, &path).expect("save wav");
+        let samples = decode_file(&path).expect("decode wav");
+        assert!(
+            (47_990..=48_010).contains(&samples.len()),
+            "{}",
+            samples.len()
+        );
+        let pitch = pitch_hz(&samples);
+        assert!((pitch - 440.0).abs() < 0.5, "{pitch} Hz");
+        // A 440 Hz sine at 0.5 moves at most 0.5 * 2 * pi * 440 / 48000 = 0.029 per sample.
+        assert!(largest_step(&samples) < 0.035, "{}", largest_step(&samples));
     }
 
     #[test]

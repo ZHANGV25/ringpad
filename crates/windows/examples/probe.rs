@@ -9,10 +9,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     use ringpad_windows::hotkeys::HotkeyListener;
     use ringpad_windows::sessions::list_audio_apps;
 
+    // Letters, digits and space are hidden unless `--all-keys` is passed, so a log taken during
+    // a game (or pasted into a bug report) never holds typed chat.
+    let all_keys = std::env::args().any(|arg| arg == "--all-keys");
     let seconds = std::env::args()
-        .nth(1)
-        .and_then(|value| value.parse::<u64>().ok())
+        .skip(1)
+        .find_map(|value| value.parse::<u64>().ok())
         .unwrap_or(120);
+    if !all_keys {
+        println!("letters, digits and space are hidden (pass --all-keys to show them)");
+    }
     let devices = list_devices()?;
     for device in &devices {
         println!(
@@ -47,9 +53,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut last_apps = Vec::new();
     while Instant::now() < deadline {
         while let Ok(event) = key_rx.try_recv() {
-            println!("key {} down={}", event.key, event.down);
+            if all_keys || !is_typing_key_name(&event.key) {
+                println!("key {} down={}", event.key, event.down);
+            }
         }
         while let Ok(event) = raw_key_rx.try_recv() {
+            if !all_keys && is_typing_vkey(event.vkey) {
+                continue;
+            }
             println!(
                 "raw key vk=0x{:02x} scan=0x{:02x} flags=0x{:04x}",
                 event.vkey, event.scan_code, event.flags
@@ -75,6 +86,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::thread::sleep(Duration::from_millis(1000));
     }
     Ok(())
+}
+
+/// Virtual-key codes for space, 0-9 and A-Z.
+#[cfg(windows)]
+fn is_typing_vkey(vkey: u16) -> bool {
+    vkey == 0x20 || (0x30..=0x39).contains(&vkey) || (0x41..=0x5a).contains(&vkey)
+}
+
+/// Ringpad key names for space and single letters or digits.
+#[cfg(windows)]
+fn is_typing_key_name(key: &str) -> bool {
+    key == "space" || (key.len() == 1 && key.chars().all(|c| c.is_ascii_alphanumeric()))
 }
 
 #[cfg(not(windows))]

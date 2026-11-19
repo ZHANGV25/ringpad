@@ -1,3 +1,6 @@
 # VB-CABLE ships exactly as VB-Audio publishes it. Its catalog (.cat) signs the INF byte for byte,
 # so line endings must never be converted.
 third_party/vb-cable/** binary
+
+# Test audio fixtures are binary.
+*.mp3 binary
