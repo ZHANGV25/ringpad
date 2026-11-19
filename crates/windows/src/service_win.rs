@@ -31,11 +31,12 @@ pub(super) fn start_platform(
         .recv()
         .map_err(|error| crate::BackendError::ThreadStart(error.to_string()))?
     {
-        Ok(()) => Ok(AudioService {
+        Ok(source_pid) => Ok(AudioService {
             stop,
             running,
             reason,
             thread: Some(thread),
+            source_pid,
         }),
         Err(error) => {
             let _ = thread.join();
@@ -50,7 +51,7 @@ fn audio_thread(
     stop: Arc<AtomicBool>,
     running: Arc<AtomicBool>,
     reason: Arc<Mutex<Option<String>>>,
-    ready: std::sync::mpsc::Sender<Result<(), crate::BackendError>>,
+    ready: std::sync::mpsc::Sender<Result<Option<u32>, crate::BackendError>>,
 ) {
     let mmcss = mmcss_register();
     let streams = match open_streams(&config).and_then(|streams| {
@@ -65,7 +66,7 @@ fn audio_thread(
         }
     };
     running.store(true, Ordering::Release);
-    let _ = ready.send(Ok(()));
+    let _ = ready.send(Ok(streams.source_pid));
 
     let mut source_bytes = vec![0_u8; SCRATCH_FRAMES * BYTES_PER_FRAME];
     let mut source_mono = vec![0.0_f32; SCRATCH_FRAMES];
@@ -138,6 +139,8 @@ fn audio_thread(
 struct Streams {
     /// `None` while recording nothing (see `SourceSpec::Nothing`).
     source: Option<CaptureStream>,
+    /// The process an app source records.
+    source_pid: Option<u32>,
     mic: Option<CaptureStream>,
     virtual_mic: RenderStream,
     headphones: Option<RenderStream>,
@@ -157,7 +160,7 @@ struct RenderStream {
 
 fn open_streams(config: &ServiceConfig) -> Result<Streams, crate::BackendError> {
     let _ = wasapi::initialize_mta();
-    let source = open_source(&config.source)?;
+    let (source, source_pid) = open_source(&config.source)?;
     let mic = config
         .mic_id
         .as_deref()
@@ -171,22 +174,26 @@ fn open_streams(config: &ServiceConfig) -> Result<Streams, crate::BackendError> 
         .transpose()?;
     Ok(Streams {
         source,
+        source_pid,
         mic,
         virtual_mic,
         headphones,
     })
 }
 
-fn open_source(source: &SourceSpec) -> Result<Option<CaptureStream>, crate::BackendError> {
+/// Opens the recorded source and, for an app, returns the process it records.
+type OpenedSource = (Option<CaptureStream>, Option<u32>);
+
+fn open_source(source: &SourceSpec) -> Result<OpenedSource, crate::BackendError> {
     match source {
-        SourceSpec::Nothing => Ok(None),
+        SourceSpec::Nothing => Ok((None, None)),
         SourceSpec::DefaultOutputLoopback => {
             let enumerator =
                 wasapi::DeviceEnumerator::new().map_err(crate::BackendError::from_wasapi)?;
             let device = enumerator
                 .get_default_device(&wasapi::Direction::Render)
                 .map_err(crate::BackendError::from_wasapi)?;
-            open_loopback_device(device).map(Some)
+            open_loopback_device(device).map(|stream| (Some(stream), None))
         }
         SourceSpec::DeviceLoopback(id) => {
             let enumerator =
@@ -194,13 +201,13 @@ fn open_source(source: &SourceSpec) -> Result<Option<CaptureStream>, crate::Back
             let device = enumerator
                 .get_device(id)
                 .map_err(|_| crate::BackendError::DeviceNotFound(id.clone()))?;
-            open_loopback_device(device).map(Some)
+            open_loopback_device(device).map(|stream| (Some(stream), None))
         }
         SourceSpec::App(exe) => {
             let pid = crate::sessions::resolve_app_pid(exe)?;
             let client = wasapi::AudioClient::new_application_loopback_client(pid, true)
                 .map_err(crate::BackendError::from_wasapi)?;
-            initialize_capture_client(client).map(Some)
+            initialize_capture_client(client).map(|stream| (Some(stream), Some(pid)))
         }
     }
 }

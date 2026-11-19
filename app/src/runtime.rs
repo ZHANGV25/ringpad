@@ -198,6 +198,29 @@ impl AppRuntime {
         Some(self.start_audio(&settings, paths, pads))
     }
 
+    /// Restarts audio once the app being recorded has closed. A recording bound to a closed
+    /// process stays silent even after the app opens again; the restart waits for it instead
+    /// (the mic keeps working) and records the new process once it runs.
+    pub fn rebind_closed_app(
+        &self,
+        settings: &Settings,
+        paths: &AppPaths,
+        pads: &PadsStore,
+    ) -> Option<EngineStatus> {
+        let SourceSetting::App { exe, .. } = &settings.source else {
+            return None;
+        };
+        if self.is_waiting() {
+            return None;
+        }
+        let pid = self.audio.lock().ok()?.as_ref()?.source_pid()?;
+        if !ringpad_windows::sessions::app_process_closed(exe, pid) {
+            return None;
+        }
+        log::info!("{exe} closed, so audio restarts to find it again");
+        Some(self.start_audio(settings, paths, pads))
+    }
+
     /// Returns the running service's status, or `None` when no service was started.
     pub fn audio_status(&self) -> Option<EngineStatus> {
         let audio = self.audio.lock().ok()?;

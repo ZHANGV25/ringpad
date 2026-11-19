@@ -24,7 +24,7 @@ The UI calls Tauri commands with camelCase argument objects and listens to the e
 
 Talk settings and defaults: `micMode` `open`; `pressTalkKeys` `off`; `gameTalkKeys` `['v']` (1 to 3 key strings); `talkLeadMs` `100` (0 to 500); `talkTailMs` `250` (0 to 2000); `talkOnlyApp` `null` (an exe file name such as `VALORANT-Win64-Shipping.exe`; `null` means any app).
 
-`EngineStatus`: `{ kind: 'starting' }`, `{ kind: 'running', sourceLabel }`, `{ kind: 'waiting', sourceLabel }`, `{ kind: 'stopped', reason }`, or `{ kind: 'needsSetup', reason }`. `waiting` means Ringpad records one app that is closed: audio still runs, so the mic passes through and clips and pads still play, and recording starts on its own when the app opens.
+`EngineStatus`: `{ kind: 'starting' }`, `{ kind: 'running', sourceLabel }`, `{ kind: 'waiting', sourceLabel }`, `{ kind: 'stopped', reason }`, or `{ kind: 'needsSetup', reason }`. `waiting` means Ringpad records one app that is closed: audio still runs, so the mic passes through and clips and pads still play, and recording starts on its own when the app opens. If the recorded app closes while Ringpad runs, the status turns to `waiting` within a few seconds and recording picks up the app's new process when it opens again.
 
 `ClipInfo`: `id`, `seconds`, `peaks` with 120 values, `savedPath`.
 
@@ -47,7 +47,7 @@ Talk settings and defaults: `micMode` `open`; `pressTalkKeys` `off`; `gameTalkKe
 - `update_settings({ patch }) -> Settings`
 - `grab_clip() -> ClipInfo`
 - `preview_clip()`
-- `send_clip()`
+- `send_clip()`: plays the clip (the last `grab_clip`) to the cable. Playing a pad or the test tone never replaces the clip, so `send_clip` and `save_clip_to_pad` still use it afterwards.
 - `stop_all()`
 - `save_clip_to_pad({ slot }) -> PadInfo`
 - `play_pad({ slot })`

@@ -215,6 +215,20 @@ pub fn app_running(exe_name: &str) -> bool {
     process_ids_by_exe(exe_name).is_ok_and(|pids| !pids.is_empty())
 }
 
+/// Whether the process an app source records is no longer among `running_pids`, the
+/// running processes of its executable. Its recording is then silent for good.
+#[must_use]
+pub fn bound_app_closed(bound_pid: u32, running_pids: &[u32]) -> bool {
+    !running_pids.contains(&bound_pid)
+}
+
+/// Whether process `pid` of `exe_name` has closed. Cheap enough to poll. A failed process
+/// listing counts as still running, so it never restarts audio.
+#[must_use]
+pub fn app_process_closed(exe_name: &str, pid: u32) -> bool {
+    process_ids_by_exe(exe_name).is_ok_and(|pids| bound_app_closed(pid, &pids))
+}
+
 /// Readable names for well-known apps whose executables have awkward names.
 const KNOWN_APPS: &[(&str, &str)] = &[
     ("VALORANT-Win64-Shipping.exe", "Valorant"),

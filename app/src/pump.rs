@@ -108,6 +108,14 @@ fn status_tick(state: &AppState) -> EngineStatus {
     if let Some(status) = state.runtime.retry_audio(&state.paths, &pads) {
         return status;
     }
+    let settings = state.settings.lock().map(|settings| settings.clone());
+    if let Some(status) = settings.ok().and_then(|settings| {
+        state
+            .runtime
+            .rebind_closed_app(&settings, &state.paths, &pads)
+    }) {
+        return status;
+    }
     // With no service running, the status from the last start (say "No virtual cable
     // found") is still the right one to show.
     let current = state

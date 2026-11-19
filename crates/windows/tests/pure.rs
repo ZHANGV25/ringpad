@@ -5,7 +5,8 @@ use ringpad_windows::devices::{
 use ringpad_windows::hotkeys::{key_name_from_vkey, mouse_events_from_button_flags};
 use ringpad_windows::mixdown::{mono_to_stereo_bytes, stereo_bytes_to_mono};
 use ringpad_windows::sessions::{
-    known_app_name, merge_audio_apps, resolve_app_pid_from, AudioApp, SessionError,
+    bound_app_closed, known_app_name, merge_audio_apps, resolve_app_pid_from, AudioApp,
+    SessionError,
 };
 use ringpad_windows::watcher::{snapshot_changed, DeviceSnapshot};
 use ringpad_windows::{ServiceConfig, SourceSpec};
@@ -301,4 +302,11 @@ fn echo_gate_turns_on_only_when_the_source_records_the_headphones() {
     assert!(!config.recording_headphones);
     assert!(!config.monitoring);
     assert_eq!(config.history_seconds, 45.0);
+}
+
+#[test]
+fn an_app_source_is_closed_once_its_process_is_gone() {
+    assert!(!bound_app_closed(42, &[7, 42]));
+    assert!(bound_app_closed(42, &[7, 43]));
+    assert!(bound_app_closed(42, &[]));
 }

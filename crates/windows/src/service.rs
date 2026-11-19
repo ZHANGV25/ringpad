@@ -103,6 +103,8 @@ pub struct AudioService {
     running: Arc<AtomicBool>,
     reason: Arc<Mutex<Option<String>>>,
     thread: Option<JoinHandle<()>>,
+    /// The process an app source records, so a closed app can be noticed.
+    source_pid: Option<u32>,
 }
 
 impl AudioService {
@@ -119,6 +121,12 @@ impl AudioService {
         };
         let (engine, handle) = Engine::new(config.engine_config(default_output.as_deref()));
         start_platform(config, engine).map(|service| (service, handle))
+    }
+
+    /// The process an app source records (`SourceSpec::App`), or `None` for other sources.
+    #[must_use]
+    pub fn source_pid(&self) -> Option<u32> {
+        self.source_pid
     }
 
     /// Returns whether the service is still running, or why it stopped.
