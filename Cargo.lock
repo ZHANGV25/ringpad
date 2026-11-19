@@ -3001,7 +3001,7 @@ dependencies = [
 
 [[package]]
 name = "ringpad"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "hound",
  "log",
@@ -3023,7 +3023,7 @@ dependencies = [
 
 [[package]]
 name = "ringpad-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "hound",
  "rtrb",
@@ -3032,7 +3032,7 @@ dependencies = [
 
 [[package]]
 name = "ringpad-windows"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "log",
  "ringpad-core",

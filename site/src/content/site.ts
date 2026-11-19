@@ -1,8 +1,8 @@
 // Every word and link on the Ringpad page, so the copy can be read and checked in one place.
-// The version and installer size match the v0.1.0 release; site.test.ts holds them to the app's
+// The version and installer size match the v0.1.1 release; site.test.ts holds them to the app's
 // own version so a release can't ship a page that points at the last one.
 
-export const VERSION = '0.1.0'
+export const VERSION = '0.1.1'
 export const INSTALLER_BYTES = 3_626_703
 export const REPO_URL = 'https://github.com/ZHANGV25/ringpad'
 export const DOWNLOAD_URL = `${REPO_URL}/releases/download/v${VERSION}/Ringpad_${VERSION}_x64-setup.exe`
