@@ -1,0 +1,489 @@
+/* The Ringpad site's stylesheet. The look is copied from briertradinggroup.com's marketing pages
+   (prop-firm, platform/apps/web/src/app/ui.css) so Victor's sites read as one family: paper and
+   black at a few opacities, Inter for words and Archivo for headings, black pills, squircle panels,
+   a header that turns into a frosted capsule once the page scrolls, and the same four motion
+   curves. The site is light only, like Brier's public pages. Ringpad itself is grayscale, so there
+   is no accent colour at all. */
+@import "tailwindcss";
+
+@theme {
+  --color-*: initial;
+
+  --color-paper: #ffffff;
+  --color-surface: #ffffff;
+  --color-well: #f4f4f4;
+  --color-ink: rgb(0 0 0 / 0.9);
+  --color-ink-hover: rgb(0 0 0 / 0.75);
+  --color-on-ink: #ffffff;
+  --color-g100: rgb(0 0 0 / 0.05);
+  --color-g200: rgb(0 0 0 / 0.1);
+  --color-g300: rgb(0 0 0 / 0.2);
+  --color-g500: rgb(0 0 0 / 0.68);
+  --color-edge: rgb(0 0 0 / 0.06);
+  --color-focus: #0b0b0b;
+  --color-scrim: rgb(0 0 0 / 0.32);
+  /* fixed white and black for words on the dark panels */
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: var(--font-archivo), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Brier's four curves, one job each. state: a control changing state. sheet: a sheet coming
+     or going. arrive: something new landing, with a small rise. fade: a fade or wipe. */
+  --ease-*: initial;
+  --ease-state: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-arrive: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-fade: cubic-bezier(0.66, 0, 0.34, 1);
+  --default-transition-timing-function: var(--ease-state);
+
+  --t-press: 50ms;
+  --t-hover: 83ms;
+  --t-quick: 150ms;
+  --t-release: 167ms;
+  --t-base: 200ms;
+  --t-arrive: 360ms;
+  --t-capsule: 700ms;
+
+  --shadow-panel: 0 1px 2px rgb(0 0 0 / 0.04), 0 10px 28px -14px rgb(0 0 0 / 0.1);
+}
+
+/* tabular, lining numerals for numbers that sit in columns */
+@utility tnum {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+@utility typ-overline-x10 {
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* the headings: the display face in sentence case, set tight */
+@utility headline {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-stretch: 104%;
+  letter-spacing: -0.028em;
+  line-height: 1.04;
+}
+
+/* the wordmark */
+@utility display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-stretch: 108%;
+  letter-spacing: -0.012em;
+  line-height: 0.95;
+}
+
+@utility typ-body-x20 {
+  font-size: 13px;
+  line-height: 18px;
+}
+@utility typ-body-x30 {
+  font-size: 15px;
+  line-height: 22px;
+}
+@utility typ-title-x10 {
+  font-size: 15px;
+  line-height: 18px;
+  font-weight: 600;
+}
+
+/* the content column, centred, with 24px gutters; a large monitor uses more of it */
+:root {
+  --site-max: 1248px;
+}
+@media (min-width: 1700px) {
+  :root {
+    --site-max: 1520px;
+  }
+}
+@utility content-column {
+  width: 100%;
+  max-width: var(--site-max);
+  margin-inline: auto;
+  padding-inline: 24px;
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    background-color: var(--color-paper);
+    scroll-padding-top: 88px;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-size: 15px;
+    line-height: 22px;
+  }
+  ::selection {
+    background: var(--color-ink);
+    color: var(--color-paper);
+  }
+  /* one focus ring everywhere: a paper gap, then a 2px ring */
+  :focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--color-paper),
+      0 0 0 4px var(--color-focus);
+  }
+  a {
+    text-underline-offset: 0.18em;
+    text-decoration-thickness: 1px;
+  }
+  button,
+  summary {
+    cursor: pointer;
+  }
+  dialog {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: inherit;
+    max-width: none;
+    max-height: none;
+  }
+  dialog::backdrop {
+    background: var(--color-scrim);
+  }
+}
+
+@layer components {
+  /* ── A press on a pill: in over 50ms, back over 167ms; a hover answers in 83ms ───────── */
+  .press {
+    transition-property: opacity, color, background-color, border-color, scale;
+    transition-duration: var(--t-hover), var(--t-hover), var(--t-hover), var(--t-hover), var(--t-release);
+    transition-timing-function: var(--ease-state);
+  }
+  .press-lg {
+    --press-scale: 0.97;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .press:active:not(:disabled, [aria-disabled='true']) {
+      scale: var(--press-scale, 0.9);
+      transition-duration: var(--t-press);
+    }
+  }
+
+  /* ── A card on a grey tile: hairline edge and a soft drop (Brier's panel) ──────────── */
+  .panel {
+    border: 1px solid var(--color-edge);
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-panel);
+  }
+
+  /* ── The header: a plain bar at rest, a floating frosted capsule once scrolled ────────── */
+  /* After 8px (html[data-scrolled], set by SiteHeader) the capsule frosts, draws its hairline and
+     pulls in from the edges: 8px on a phone, to 1040px on a wide screen, over 700ms. */
+  .site-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 20;
+    pointer-events: none;
+  }
+  .site-capsule {
+    pointer-events: auto;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: var(--site-max);
+    margin-inline: auto;
+    padding-inline: 23px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background-color: transparent;
+    translate: 0 0;
+    transition:
+      max-width var(--t-capsule) var(--ease-arrive),
+      translate var(--t-capsule) var(--ease-arrive),
+      padding var(--t-capsule) var(--ease-arrive),
+      background-color var(--t-base) var(--ease-state),
+      border-color var(--t-base) var(--ease-state),
+      box-shadow var(--t-base) var(--ease-state);
+  }
+  html[data-scrolled] .site-capsule {
+    max-width: calc(100% - 16px);
+    translate: 0 8px;
+    background-color: color-mix(in srgb, var(--color-paper) 58%, transparent);
+    background-image: linear-gradient(180deg, color-mix(in srgb, var(--color-paper) 26%, transparent), transparent);
+    border-color: color-mix(in srgb, var(--color-paper) 40%, transparent);
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, var(--color-paper) 75%, transparent),
+      0 14px 36px -14px rgb(0 0 0 / 0.32);
+    -webkit-backdrop-filter: blur(24px) saturate(1.8);
+    backdrop-filter: blur(24px) saturate(1.8);
+  }
+  @media (min-width: 1152px) {
+    html[data-scrolled] .site-capsule {
+      max-width: 1040px;
+      padding-inline: 19px;
+      translate: 0 12px;
+    }
+  }
+  .site-bar {
+    height: 56px;
+    transition: height var(--t-capsule) var(--ease-arrive);
+  }
+  @media (min-width: 1024px) {
+    .site-bar {
+      height: 64px;
+    }
+    html[data-scrolled] .site-bar {
+      height: 56px;
+    }
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    html[data-scrolled] .site-capsule {
+      background-color: color-mix(in srgb, var(--color-paper) 96%, transparent);
+    }
+  }
+  /* ── The header's links: one pill slides behind the link under the pointer ───────────── */
+  /* The links are grey at rest and go ink once the page scrolls, so they hold their contrast
+     on the frosted capsule over whatever passes under it. */
+  .site-nav {
+    position: relative;
+    isolation: isolate;
+  }
+  .nav-indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: -1;
+    height: 100%;
+    width: var(--nav-w, 0px);
+    translate: var(--nav-x, 0px) 0;
+    opacity: var(--nav-o, 0);
+    border-radius: 999px;
+    background-color: var(--color-g100);
+    transition:
+      translate var(--t-arrive) var(--ease-arrive),
+      width var(--t-arrive) var(--ease-arrive),
+      opacity var(--t-quick) var(--ease-fade);
+  }
+  .nav-link {
+    color: var(--color-g500);
+    transition: color var(--t-hover) var(--ease-state);
+  }
+  .nav-link:hover,
+  .nav-link:focus-visible,
+  .nav-link[data-resting='true'],
+  html[data-scrolled] .nav-link {
+    color: var(--color-ink);
+  }
+
+  /* ── The phone menu: a sheet from the top, 200ms in and 150ms out ──────────────────── */
+  .sheet-top {
+    opacity: 0;
+    translate: 0 -8px;
+    transition:
+      opacity var(--t-quick) var(--ease-fade),
+      translate var(--t-quick) var(--ease-fade),
+      display var(--t-quick) allow-discrete,
+      overlay var(--t-quick) allow-discrete;
+  }
+  .sheet-top::backdrop {
+    opacity: 0;
+    transition:
+      opacity var(--t-base) var(--ease-fade),
+      display var(--t-base) allow-discrete,
+      overlay var(--t-base) allow-discrete;
+  }
+  .sheet-top[open] {
+    opacity: 1;
+    translate: 0 0;
+    transition:
+      opacity var(--t-base) var(--ease-arrive),
+      translate var(--t-base) var(--ease-arrive),
+      display var(--t-base) allow-discrete,
+      overlay var(--t-base) allow-discrete;
+  }
+  .sheet-top[open]::backdrop {
+    opacity: 1;
+  }
+  @starting-style {
+    .sheet-top[open] {
+      opacity: 0;
+      translate: 0 -12px;
+    }
+    .sheet-top[open]::backdrop {
+      opacity: 0;
+    }
+  }
+
+  /* ── Rows that land one after another, 24ms apart ──────────────────────────────────── */
+  .stagger > * {
+    animation: stagger-in var(--t-arrive) var(--ease-arrive) both;
+  }
+  .stagger > :nth-child(2) {
+    animation-delay: 24ms;
+  }
+  .stagger > :nth-child(3) {
+    animation-delay: 48ms;
+  }
+  .stagger > :nth-child(4) {
+    animation-delay: 72ms;
+  }
+  .stagger > :nth-child(5) {
+    animation-delay: 96ms;
+  }
+  .stagger > :nth-child(6) {
+    animation-delay: 120ms;
+  }
+  @keyframes stagger-in {
+    from {
+      opacity: 0;
+      translate: 0 8px;
+    }
+  }
+
+  /* ── Squircle panels: straight sides that bend into each corner with no kink ─────────── */
+  .squircle {
+    --squircle-r: 48px;
+    --squircle-c: calc(var(--squircle-r) * 0.09);
+    border-radius: calc(var(--squircle-r) * 0.54);
+    overflow: hidden;
+  }
+  @supports (corner-shape: squircle) {
+    .squircle {
+      border-radius: var(--squircle-r);
+      corner-shape: squircle;
+    }
+  }
+  @supports (not (corner-shape: squircle)) and (clip-path: shape(from 0 0, line to 1px 1px)) {
+    .squircle {
+      border-radius: 0;
+      clip-path: shape(
+        from var(--squircle-r) 0,
+        hline to calc(100% - var(--squircle-r)),
+        curve to 100% var(--squircle-r) with calc(100% - var(--squircle-c)) 0 / 100% var(--squircle-c),
+        vline to calc(100% - var(--squircle-r)),
+        curve to calc(100% - var(--squircle-r)) 100% with 100% calc(100% - var(--squircle-c)) / calc(100% - var(--squircle-c)) 100%,
+        hline to var(--squircle-r),
+        curve to 0 calc(100% - var(--squircle-r)) with var(--squircle-c) 100% / 0 calc(100% - var(--squircle-c)),
+        vline to var(--squircle-r),
+        curve to var(--squircle-r) 0 with 0 var(--squircle-c) / var(--squircle-c) 0,
+        close
+      );
+    }
+  }
+  .squircle-sm {
+    --squircle-r: 32px;
+  }
+
+  /* ── The dark panels: graphite with a light from the top left (Brier's stage-panel) ──── */
+  .stage-panel {
+    background-color: #0c0d0f;
+    background-image: radial-gradient(120% 90% at 18% 0%, #2c2e33 0%, #16171a 52%, #0c0d0f 100%);
+  }
+
+  /* ── The light grey stage the app stands on (Brier's laptop-stage) ─────────────────── */
+  .stage-light {
+    background-color: #efefef;
+    background-image: radial-gradient(120% 90% at 50% 0%, #f7f7f7 0%, #efefef 55%, #e2e2e2 100%);
+  }
+
+  /* ── Frosted panes on the dark hero, after Brier's glass-dark ──────────────────────── */
+  .glass-dark {
+    position: relative;
+    background-image: linear-gradient(135deg, rgb(255 255 255 / 0.14) 0%, rgb(255 255 255 / 0.04) 48%, rgb(255 255 255 / 0.08) 100%);
+    background-color: rgb(255 255 255 / 0.04);
+    border: 1px solid rgb(255 255 255 / 0.16);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.28),
+      0 28px 56px -24px rgb(0 0 0 / 0.65);
+  }
+
+  /* ── The Ringpad window, drawn as Windows 11 draws it ──────────────────────────────── */
+  /* 8px corners, a hairline edge and the long soft shadow Windows gives an active window. The
+     title bar holds the app's name on the left and the three caption glyphs on the right. */
+  .app-window {
+    overflow: hidden;
+    border-radius: 10px;
+    background-color: #ffffff;
+    box-shadow:
+      0 0 0 1px rgb(0 0 0 / 0.12),
+      0 40px 80px -30px rgb(0 0 0 / 0.45),
+      0 12px 24px -12px rgb(0 0 0 / 0.2);
+  }
+  .app-window-on-dark {
+    box-shadow:
+      0 0 0 1px rgb(255 255 255 / 0.14),
+      0 48px 96px -30px rgb(0 0 0 / 0.8),
+      0 16px 32px -16px rgb(0 0 0 / 0.5);
+  }
+
+  /* ── Panels wipe up into place and pictures rise (Brier's photo-wipe and rise-in) ──── */
+  /* The hero wipes up as the page opens; the rest wait (Reveal.tsx) until they scroll into
+     view, once. */
+  @media (prefers-reduced-motion: no-preference) {
+    .wipe-enter {
+      animation: photo-wipe 950ms var(--ease-fade) 80ms backwards;
+    }
+    [data-reveal='wait'] .rise-in {
+      opacity: 0;
+      transform: translateY(40px);
+    }
+    [data-reveal='play'] .rise-in {
+      animation: rise-in 900ms var(--ease-arrive) backwards;
+    }
+    [data-reveal='play'] > :nth-child(2) .rise-in {
+      animation-delay: 110ms;
+    }
+    [data-reveal='play'] > :nth-child(3) .rise-in {
+      animation-delay: 220ms;
+    }
+    .enter-up {
+      animation: rise-in 1100ms var(--ease-arrive) 240ms backwards;
+    }
+  }
+  @keyframes photo-wipe {
+    from {
+      clip-path: inset(100% 0 0 0);
+    }
+    to {
+      clip-path: inset(0 0 0 0);
+    }
+  }
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(40px);
+    }
+  }
+}
+
+/* Reduce means fewer and gentler: every duration becomes 1ms and nothing moves. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after,
+  ::backdrop {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+  }
+  .sheet-top,
+  .sheet-top[open],
+  .stagger > * {
+    translate: 0 0 !important;
+  }
+}

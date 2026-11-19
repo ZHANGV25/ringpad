@@ -1,0 +1,9 @@
+/.next/
+/out/
+/node_modules/
+/test-results/
+/playwright-report/
+/.vercel/
+*.tsbuildinfo
+/coverage/
+/next-env.d.ts

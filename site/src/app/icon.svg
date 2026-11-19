@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect x="4" y="4" width="192" height="192" rx="44" fill="#dcdcdc"/><g transform="translate(100 106) scale(1.02) translate(-100 -88)"><g>
+      <g><circle cx="50" cy="45" r="22" fill="#0b0b0b"/></g>
+      <g><circle cx="150" cy="45" r="22" fill="#0b0b0b"/></g>
+      <path fill="#ffffff" stroke="none" stroke-width="3.2" d="M100 28 C140 28 168 53 168 89 C168 124 139 148 100 148 C61 148 32 124 32 89 C32 53 60 28 100 28 Z"/>
+      <ellipse cx="72" cy="94" rx="18" ry="23" transform="rotate(34 72 94)" fill="#0b0b0b"/>
+      <ellipse cx="128" cy="94" rx="18" ry="23" transform="rotate(-34 128 94)" fill="#0b0b0b"/>
+      <g>
+        <g><circle cx="76" cy="89" r="11" fill="#ffffff"/><g><circle cx="77.5" cy="90" r="6.6" fill="#0b0b0b"/><circle cx="80.2" cy="87.2" r="2.5" fill="#ffffff"/></g></g>
+        <g><circle cx="124" cy="89" r="11" fill="#ffffff"/><g><circle cx="122.5" cy="90" r="6.6" fill="#0b0b0b"/><circle cx="125.2" cy="87.2" r="2.5" fill="#ffffff"/></g></g>
+      </g>
+      <path fill="#0b0b0b" d="M91.5 110 C95 106.8 105 106.8 108.5 110 C108 115.4 103.2 118.4 100 118.9 C96.8 118.4 92 115.4 91.5 110 Z"/>
+      <g fill="none" stroke="#0b0b0b" stroke-width="3.2" stroke-linecap="round">
+        <path d="M100 118.9 V122.5"/><path d="M91.5 121.5 C94.5 126.5 100 126 100 122.5 C100 126 105.5 126.5 108.5 121.5"/>
+      </g>
+      </g></svg>

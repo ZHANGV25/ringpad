@@ -14,6 +14,9 @@ React + TypeScript UI. MIT licensed. Windows 10/11 only.
   the interface stays monochrome in both themes. Tests run against the fake engine `ui/src/engine/fakeApi.ts`.
 - `docs/IPC.md` the command and event contract; `docs/SETUP.md` user setup; `docs/brand`, `docs/images`.
 - `third_party/vb-cable` VB-CABLE Pack45, bundled unchanged. Also `CONTRIBUTING.md`, `SECURITY.md`.
+- `site` the download page (Next.js static export, its own npm project, not a workspace). Its look
+  is copied from briertradinggroup.com (prop-firm `platform/apps/web/src/app/ui.css`); every word
+  and link is in `site/src/content/site.ts`. Media in `site/public/media` comes from the UI's fake engine.
 
 ## Setup
 - Windows, Rust stable 1.90 or newer, Node 22, WebView2 runtime, MSVC Build Tools.
@@ -37,6 +40,8 @@ React + TypeScript UI. MIT licensed. Windows 10/11 only.
   in `ui` once.
 - `npm test` runs the UI tests only. `tauri::generate_context!` needs the built UI at compile time,
   so run `npm run build --workspace ui` before clippy or cargo test on a fresh checkout.
+- Site: `cd site`, `npm install`, then `npm run dev` (port 3240), `npm run typecheck`, `npm run coverage`,
+  `npm run build` (writes `site/out`) and `npm run e2e` (run `npx playwright install chromium` once).
 - `cargo run -p ringpad-windows --example probe` lists devices and apps and prints hotkey presses
   (letters, digits and space stay hidden unless `--all-keys` is passed).
 
@@ -49,6 +54,8 @@ React + TypeScript UI. MIT licensed. Windows 10/11 only.
   3. The workflow builds the installer and creates a DRAFT GitHub release with the `.exe` and
      `SHA256SUMS.txt`. A person reviews and publishes it.
 - Installers are unsigned.
+- On a new version, set `VERSION` and `INSTALLER_BYTES` in `site/src/content/site.ts` (a test holds
+  the version to `app/tauri.conf.json`). The site deploys on Vercel from `site/` (project root `site`).
 
 ## Conventions
 - Commits: `type: summary` (feat, fix, refactor, docs, test, chore, perf, ci). No Co-Authored-By

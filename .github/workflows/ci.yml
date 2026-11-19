@@ -55,3 +55,33 @@ jobs:
             ui/playwright-report
             ui/test-results
           retention-days: 7
+
+  site:
+    name: Site (typecheck, test, build, e2e)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - run: npm ci
+      # The build writes next-env.d.ts, which the typecheck needs.
+      - run: npm run build
+      - run: npm run typecheck
+      - run: npm run coverage
+      # Both widths, an AA check and the phone menu (site/playwright.config.ts starts next dev).
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-playwright-report
+          path: |
+            site/playwright-report
+            site/test-results
+          retention-days: 7
