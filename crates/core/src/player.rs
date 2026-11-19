@@ -101,6 +101,14 @@ impl ClipPlayer {
         retire(old);
     }
 
+    /// Starts `clip` once and leaves the loaded clip alone, so a pad played over the clip
+    /// does not change what replay plays.
+    pub(crate) fn play_once_for_audio(&mut self, clip: Clip, mut retire: impl FnMut(Clip)) {
+        let old_playing = std::mem::replace(&mut self.playing, clip);
+        self.pos = 0;
+        retire(old_playing);
+    }
+
     pub(crate) fn play_for_audio(&mut self, clip: Clip, mut retire: impl FnMut(Clip)) {
         let old_loaded = std::mem::replace(&mut self.loaded, Arc::clone(&clip));
         let old_playing = std::mem::replace(&mut self.playing, clip);

@@ -322,7 +322,7 @@ impl Engine {
     fn play_send(&mut self, clip: Clip) {
         let mut retired = VecRetire::new();
         self.player
-            .play_for_audio(clip, |old_clip| retired.push(old_clip));
+            .play_once_for_audio(clip, |old_clip| retired.push(old_clip));
         self.shared.sending.store(true, Ordering::Release);
         self.retire_all(retired);
     }

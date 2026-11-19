@@ -8,9 +8,10 @@ use common::{
 };
 use ringpad_core::actions::{
     grab, load_slots, play_pad, save_current_to_pad, send_last, slot_pressed, stop_all,
-    toggle_save, ActionEvent, KEY_GRAB, KEY_REPEAT, KEY_SAVE, KEY_STOP, SLOT_KEYS,
+    toggle_save, ActionEvent, Session, KEY_GRAB, KEY_REPEAT, KEY_SAVE, KEY_STOP, SLOT_KEYS,
 };
 use ringpad_core::clip_files::{load_wav, save_wav, timestamped_path};
+use ringpad_core::engine::Engine;
 
 // test_grab_with_silence_says_nothing_heard
 #[test]
@@ -154,8 +155,8 @@ fn save_then_slot_key_stores_last_clip_and_file() {
     let (_engine, mut session) = make_session(tmp.clone(), false, false);
     session
         .handle
-        .play_send_clip(clip(&voice(1.0, 0.3)))
-        .expect("play");
+        .load_send_clip(clip(&voice(1.0, 0.3)))
+        .expect("load");
     assert_eq!(toggle_save(&mut session, 0.0), ActionEvent::SaveArmed);
     assert!(matches!(
         slot_pressed(&mut session, 3, 1.0).expect("save"),
@@ -197,8 +198,8 @@ fn saved_slots_load_on_next_start() {
     let (_engine, mut session) = make_session(tmp.clone(), false, false);
     session
         .handle
-        .play_send_clip(clip(&voice(1.0, 0.3)))
-        .expect("play");
+        .load_send_clip(clip(&voice(1.0, 0.3)))
+        .expect("load");
     assert_eq!(toggle_save(&mut session, 0.0), ActionEvent::SaveArmed);
     slot_pressed(&mut session, 1, 1.0).expect("save");
     let (_fresh_engine, mut fresh) = make_session(tmp, false, false);
@@ -350,5 +351,69 @@ fn save_current_to_pad_can_be_called_directly() {
             slot: 8,
             path: Some(tmp.join("slots").join("slot8.wav"))
         }
+    );
+}
+
+// A pad played after a grab must not take the clip's place: Send and Save use the clip.
+// Returns the grabbed clip as it was before the pad played.
+fn grab_then_play_a_pad(session: &mut Session, engine: &mut Engine) -> Vec<f32> {
+    session.handle.history().push(&voice(1.0, 0.3));
+    grab(session).expect("grab");
+    let grabbed = session.handle.current_send_clip().to_vec();
+    assert!(grabbed.iter().any(|sample| (sample - 0.9).abs() < 1e-6));
+    session
+        .pads
+        .store(2, clip(&voice(0.5, 0.2)), "two")
+        .expect("store");
+    play_pad(session, 2).expect("play");
+    assert_all_approx(&play_virtual(engine, 1), 0.2, 1e-6);
+    play_virtual(engine, 2);
+    grabbed
+}
+
+#[test]
+fn send_after_a_pad_sends_the_clip_not_the_pad() {
+    let tmp = temp_dir("send-after-pad");
+    let (mut engine, mut session) = make_session(tmp, false, false);
+    grab_then_play_a_pad(&mut session, &mut engine);
+    assert_eq!(
+        send_last(&mut session).expect("send"),
+        ActionEvent::SendingClip
+    );
+    // The levelled clip (0.9), not the pad (0.2).
+    assert_all_approx(&play_virtual(&mut engine, 1), 0.9, 1e-6);
+}
+
+#[test]
+fn save_after_a_pad_saves_the_clip_not_the_pad() {
+    let tmp = temp_dir("save-after-pad");
+    let (mut engine, mut session) = make_session(tmp, false, false);
+    let grabbed = grab_then_play_a_pad(&mut session, &mut engine);
+    assert!(matches!(
+        save_current_to_pad(&mut session, 5).expect("save"),
+        ActionEvent::SavedToPad { slot: 5, .. }
+    ));
+    let saved = session.pads.get(5).expect("slot").expect("filled");
+    assert_eq!(saved.clip.len(), grabbed.len());
+    assert_slice_approx(&saved.clip, &grabbed, 1e-6);
+}
+
+#[test]
+fn send_with_no_clip_stays_quiet_after_a_pad() {
+    let tmp = temp_dir("send-no-clip-after-pad");
+    let (mut engine, mut session) = make_session(tmp, false, false);
+    session
+        .pads
+        .store(2, clip(&voice(0.5, 0.2)), "two")
+        .expect("store");
+    play_pad(&mut session, 2).expect("play");
+    play_virtual(&mut engine, 2);
+    assert_eq!(
+        send_last(&mut session).expect("send"),
+        ActionEvent::NoClipYet
+    );
+    assert_eq!(
+        save_current_to_pad(&mut session, 5).expect("save"),
+        ActionEvent::NothingToSave
     );
 }

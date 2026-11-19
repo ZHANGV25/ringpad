@@ -115,24 +115,23 @@ impl EngineHandle {
         self.shared.preview_enabled
     }
 
-    /// Returns the current send clip mirror.
+    /// Returns the loaded clip: the one Send replays and Save stores.
     #[must_use]
     pub fn current_send_clip(&self) -> Clip {
         Arc::clone(&self.current_send)
     }
 
-    /// Queues a send-clip load command without blocking.
+    /// Queues a send-clip load command without blocking. The loaded clip is what Send replays.
     pub fn load_send_clip(&mut self, clip: Clip) -> Result<(), EngineCommandError> {
         self.push(EngineCommand::LoadSend(Arc::clone(&clip)))?;
         self.current_send = clip;
         Ok(())
     }
 
-    /// Queues immediate send playback without blocking.
+    /// Queues immediate send playback of `clip` (a pad or the test tone) without blocking.
+    /// The loaded clip stays as it was, so Send and Save still use it afterwards.
     pub fn play_send_clip(&mut self, clip: Clip) -> Result<(), EngineCommandError> {
-        self.push(EngineCommand::PlaySend(Arc::clone(&clip)))?;
-        self.current_send = clip;
-        Ok(())
+        self.push(EngineCommand::PlaySend(clip))
     }
 
     /// Queues replay of the mirrored send clip without blocking.

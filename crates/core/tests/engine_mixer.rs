@@ -351,3 +351,14 @@ fn history_length_follows_the_config_within_limits() {
     let (_engine, handle) = Engine::new(config);
     assert_eq!(handle.history().capacity(), 120_000);
 }
+
+#[test]
+fn playing_a_clip_once_leaves_the_loaded_clip_for_replay() {
+    let (mut engine, mut handle) = engine_pair(false, false, false, false);
+    handle.load_send_clip(clip(&[0.6; BLOCK])).expect("load");
+    handle.play_send_clip(clip(&[0.3; BLOCK])).expect("play");
+    assert_all_approx(&play_virtual(&mut engine, 1), 0.3, 1e-6);
+    assert_eq!(&*handle.current_send_clip(), &[0.6; BLOCK][..]);
+    handle.replay_send_clip().expect("replay");
+    assert_all_approx(&play_virtual(&mut engine, 1), 0.6, 1e-6);
+}
