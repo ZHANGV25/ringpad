@@ -83,6 +83,8 @@ describe('first run', () => {
     expect(screen.getByRole('status').textContent).toMatch(/Waiting for Valorant…/)
     fireEvent.click(screen.getByRole('switch', { name: /Hold V for me while a clip plays/ }))
     await waitFor(async () => expect((await api.getSnapshot()).settings.pressTalkKeys).toBe('clips'))
+    // Only while Valorant is in front, so a V never lands in a chat box or a document.
+    expect((await api.getSnapshot()).settings.talkOnlyApp).toBe('VALORANT-Win64-Shipping.exe')
   })
 
   it('starts with the install when there is no virtual mic, and lets you skip it', async () => {

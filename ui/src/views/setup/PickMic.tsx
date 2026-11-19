@@ -119,16 +119,24 @@ function Check({ users, target, mic }: CheckProps) {
   )
 }
 
-/** Valorant's team chat only sends while the talk key is held; Ringpad can hold it during clips. */
+/** Valorant's executable, for holding its talk key only while it is in front. */
+const VALORANT_EXE = 'VALORANT-Win64-Shipping.exe'
+
+/**
+ * Valorant's team chat only sends while the talk key is held; Ringpad can hold it during clips.
+ * Turning it on here also limits the key to Valorant (unless Settings already picked an app),
+ * so a V never lands in a chat box or a document.
+ */
 function TalkKeyToggle({ settings }: { settings: Settings }) {
   const { api } = useEngine()
   const keys = settings.gameTalkKeys.map(keyLabel).join(' + ')
+  const turnOn = { pressTalkKeys: 'clips', talkOnlyApp: settings.talkOnlyApp ?? VALORANT_EXE } as const
   return (
     <Toggle
       checked={settings.pressTalkKeys !== 'off'}
       label={`Hold ${keys} for me while a clip plays`}
-      hint="Team chat only sends while it’s held."
-      onChange={(on) => void api.updateSettings({ patch: { pressTalkKeys: on ? 'clips' : 'off' } })}
+      hint="Team chat only sends while it’s held. Only while Valorant is in front."
+      onChange={(on) => void api.updateSettings({ patch: on ? turnOn : { pressTalkKeys: 'off' } })}
     />
   )
 }
