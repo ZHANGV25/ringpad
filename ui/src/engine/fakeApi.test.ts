@@ -138,6 +138,96 @@ describe('fake engine', () => {
     expect(handler.mock.calls).toEqual([[{ key: 'b' }]])
   })
 
+  it('runs the clip hotkeys like the real engine', async () => {
+    const api = createFakeApi({ startTimers: false })
+    const errors = vi.fn()
+    const playback = vi.fn()
+    api.onError(errors)
+    api.onPlayback(playback)
+
+    api.simulateKey('f7')
+    await vi.waitFor(() => expect(errors).toHaveBeenCalledWith({ message: 'No clip yet' }))
+
+    api.simulateKey('f8')
+    expect((await api.getSnapshot()).clip).not.toBeNull()
+    api.simulateKey('mouse5')
+    expect(playback.mock.lastCall?.[0]).toMatchObject({ sending: true, pad: null })
+    api.simulateKey('f9')
+    expect(playback.mock.lastCall?.[0]).toMatchObject({ sending: false, previewing: false })
+    api.simulateKey('x')
+    expect(playback.mock.lastCall?.[0]).toMatchObject({ sending: false })
+    api.dispose()
+  })
+
+  it('saves the clip with F6 then a pad key, and plays pads by their keys', async () => {
+    const api = createFakeApi({ startTimers: false })
+    const errors = vi.fn()
+    api.onError(errors)
+
+    // Armed with no clip, a pad key just disarms.
+    api.simulateKey('f6')
+    expect((await api.getSnapshot()).playback.saveArmed).toBe(true)
+    api.simulateKey('f2')
+    expect((await api.getSnapshot()).playback.saveArmed).toBe(false)
+
+    await api.grabClip()
+    api.simulateKey('f6')
+    api.simulateKey('f6')
+    expect((await api.getSnapshot()).playback.saveArmed).toBe(false)
+    api.simulateKey('f6')
+    // An empty pad keeps its default key, so F2 fills pad 2.
+    api.simulateKey('f2')
+    const after = await api.getSnapshot()
+    expect(after.playback.saveArmed).toBe(false)
+    expect(after.pads[1]?.name).toBe('Pad 2')
+
+    api.simulateKey('f2')
+    expect((await api.getSnapshot()).playback).toMatchObject({ sending: true, pad: 1 })
+    api.simulateKey('f1')
+    await vi.waitFor(() => expect(errors).toHaveBeenCalledWith({ message: 'Pad is empty' }))
+
+    // A main hotkey wins over a pad that has the same key.
+    await api.setPadHotkey({ slot: 1, hotkey: 'f8' })
+    const before = (await api.getSnapshot()).clip?.id
+    api.simulateKey('f8')
+    expect((await api.getSnapshot()).clip?.id).not.toBe(before)
+    api.dispose()
+  })
+
+  it('lets tests set who listens, the devices, the apps and the status', async () => {
+    let now = 0
+    const api = createFakeApi({ now: () => now })
+    api.setMicUsers([{ pid: 1, exe: 'Discord.exe', name: 'Discord', mic: 'Microphone', ringpad: false }])
+    now += 10_000
+    expect((await api.micUsers()).map((user) => [user.name, user.ringpad])).toEqual([['Discord', false]])
+
+    const devices = vi.fn()
+    api.onDevices(devices)
+    api.simulateDevices([{ id: 'speakers', name: 'Speakers', direction: 'output', isDefault: true, virtualCable: null }])
+    expect(devices.mock.lastCall?.[0].map((device: { id: string }) => device.id)).toEqual(['speakers'])
+    expect((await api.listDevices()).map((device) => device.id)).toEqual(['speakers'])
+    const calls = devices.mock.calls.length
+    api.simulateDevices([], { silent: true })
+    expect(devices.mock.calls.length).toBe(calls)
+    expect(await api.listDevices()).toEqual([])
+
+    api.setAudioApps([{ pid: 5, exe: 'Game.exe', name: 'Game', active: false, peak: 0 }])
+    expect((await api.listAudioApps()).map((app) => app.name)).toEqual(['Game'])
+
+    api.simulateStatus({ kind: 'stopped', reason: 'device not found: Microphone' })
+    expect((await api.getSnapshot()).status).toEqual({ kind: 'stopped', reason: 'device not found: Microphone' })
+    api.dispose()
+  })
+
+  it('says whether it is capturing a key', async () => {
+    const api = createFakeApi({ startTimers: false })
+    expect(api.isCapturingKeys()).toBe(false)
+    await api.beginKeyCapture()
+    expect(api.isCapturingKeys()).toBe(true)
+    await api.cancelKeyCapture()
+    expect(api.isCapturingKeys()).toBe(false)
+  })
+
   it('animates meters and the live strip, and stops on dispose', async () => {
     vi.useFakeTimers()
     const api = createFakeApi({ settings: { micEnabled: true } })

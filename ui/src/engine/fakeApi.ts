@@ -2,6 +2,7 @@ import type { EngineApi, FileDropEvent, Unsubscribe } from './api'
 import { DEFAULT_PAD_HOTKEYS, DEFAULT_SETTINGS, DEFAULT_TALK, type AudioApp, type CableInstall, type MicUser, type ClipInfo, type DeviceInfo, type EngineStatus, type Meters, type PadInfo, type Playback, type Settings, type SettingsPatch, type Snapshot, type TalkState } from './types'
 import type { EventName, EventPayloads, Listener } from './fakeEvents'
 import { nextTalkState, talkEqual, validateTalkSettings } from './fakeTalk'
+import { hotkeyAction, type HotkeyAction } from './fakeHotkeys'
 import { cleanName, clamp, cloneClip, cloneDevices, clonePad, clonePads, cloneSettings, cloneTalk, makeApps, makeClip, makeDevices, makePad, makePeaks, requirePad, seededRandom, speechLevel, walk } from './fakeData'
 interface FakeOptions {
   now?: () => number
@@ -31,7 +32,7 @@ export class FakeEngineApi implements EngineApi {
   private livePeaks: number[] = []
   private apps = makeApps()
   private devices: DeviceInfo[]
-  private status = { kind: 'running' as const, sourceLabel: 'your headphones' }
+  private status: EngineStatus = { kind: 'running', sourceLabel: 'your headphones' }
   private settings: Settings
   private talk: TalkState = cloneTalk(DEFAULT_TALK)
   private clip: ClipInfo | null = null
@@ -49,6 +50,8 @@ export class FakeEngineApi implements EngineApi {
   /** Apps recording from a mic. With timers on (the dev preview), Discord picks Ringpad's mic a few seconds after the first look. */
   public micApps: MicUser[] = []
   private firstMicLook: number | null = null
+  /** Set by setMicUsers: the test decides who listens, so Discord never joins on its own. */
+  private scriptedMicUsers = false
   private readonly timers: boolean
   /** What the next VB-CABLE install reports; an Error makes it fail. */
   public nextCableInstall: CableInstall | Error = 'installed'
@@ -103,7 +106,7 @@ export class FakeEngineApi implements EngineApi {
   }
   async micUsers(): Promise<MicUser[]> {
     this.firstMicLook ??= this.now()
-    if (this.timers && this.now() - this.firstMicLook > DISCORD_JOINS_MS) {
+    if (this.timers && !this.scriptedMicUsers && this.now() - this.firstMicLook > DISCORD_JOINS_MS) {
       this.micApps = [{ pid: 4242, exe: 'Discord.exe', name: 'Discord', mic: 'CABLE Output (VB-Audio Virtual Cable)', ringpad: true }]
     }
     return this.micApps.map((app) => ({ ...app }))
@@ -301,14 +304,26 @@ export class FakeEngineApi implements EngineApi {
     this.simulateKeyUp(key)
   }
 
+  /** A global key going down: key capture takes it first, then the talk key, then the hotkeys. */
   simulateKeyDown(key: string): void {
     if (this.keyCapture) {
       this.keyCapture = false
       this.emit('key-captured', { key })
       return
     }
-    const talkKey = this.settings.hotkeys.talk
-    if (!talkKey || key !== talkKey || this.settings.micMode === 'open') {
+    if (key === this.settings.hotkeys.talk) {
+      this.pressTalkKey(key)
+      return
+    }
+    const action = hotkeyAction(key, this.settings, this.pads)
+    if (action) {
+      // Like the real engine, a hotkey that cannot run says why in an error event.
+      this.runHotkey(action).catch((error: unknown) => this.emitError(error instanceof Error ? error.message : String(error)))
+    }
+  }
+
+  private pressTalkKey(key: string): void {
+    if (this.settings.micMode === 'open') {
       return
     }
     if (this.settings.micMode === 'pushToTalk') {
@@ -343,12 +358,37 @@ export class FakeEngineApi implements EngineApi {
 
   /** What the save hotkey does in the real engine: the next pad key saves the clip. */
   armSave(): void {
-    this.playback = { ...this.playback, saveArmed: true }
-    this.emit('playback', { ...this.playback })
+    this.setSaveArmed(true)
   }
 
   simulateStatus(status: EngineStatus): void {
+    this.status = { ...status }
     this.emit('status', status)
+  }
+
+  /**
+   * Windows' device list changed: a device was plugged in, removed or made the default. `silent`
+   * leaves the UI to find out on its next listDevices, as after a change the engine missed.
+   */
+  simulateDevices(devices: DeviceInfo[], { silent = false }: { silent?: boolean } = {}): void {
+    this.devices = cloneDevices(devices)
+    if (!silent) this.emit('devices', cloneDevices(this.devices))
+  }
+
+  /** The apps playing sound that the next listAudioApps (Refresh apps) reports. */
+  setAudioApps(apps: AudioApp[]): void {
+    this.apps = apps.map((app) => ({ ...app }))
+  }
+
+  /** Who records from a mic from now on. Discord no longer picks Ringpad's mic on its own. */
+  setMicUsers(users: MicUser[]): void {
+    this.scriptedMicUsers = true
+    this.micApps = users.map((user) => ({ ...user }))
+  }
+
+  /** Whether the next key press goes to key capture instead of the hotkeys. */
+  isCapturingKeys(): boolean {
+    return this.keyCapture
   }
 
   simulateLive(peaks: number[]): void {
@@ -397,6 +437,30 @@ export class FakeEngineApi implements EngineApi {
     this.liveTick += 1
     this.livePeaks = [...this.livePeaks.slice(1 - LIVE_PEAKS), speechLevel(this.liveTick, this.random)]
     this.emit('live', { peaks: [...this.livePeaks] })
+  }
+
+  private async runHotkey(action: HotkeyAction): Promise<void> {
+    if (action.kind === 'grab') await this.grabClip()
+    else if (action.kind === 'send') await this.sendClip()
+    else if (action.kind === 'stop') await this.stopAll()
+    else if (action.kind === 'save') this.setSaveArmed(!this.playback.saveArmed)
+    else await this.pressPad(action.slot)
+  }
+
+  /** While save is armed a pad key saves the clip into that pad; otherwise it plays the pad. */
+  private async pressPad(slot: number): Promise<void> {
+    if (!this.playback.saveArmed) {
+      await this.playPad({ slot })
+    } else if (this.clip) {
+      await this.saveClipToPad({ slot })
+    } else {
+      this.setSaveArmed(false)
+    }
+  }
+
+  private setSaveArmed(saveArmed: boolean): void {
+    this.playback = { ...this.playback, saveArmed }
+    this.emit('playback', { ...this.playback })
   }
 
   /** Plays for as long as the sound lasts, like the real engine. */

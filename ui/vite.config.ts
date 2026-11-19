@@ -11,6 +11,9 @@ export default defineConfig({
   server: {
     port: DEV_PORT,
     strictPort: true,
+    // Test reports are not the app: a coverage run writing its HTML would reload every open page,
+    // including the ones an e2e run is driving.
+    watch: { ignored: ['**/coverage/**', '**/test-results/**', '**/playwright-report/**'] },
   },
   build: {
     target: 'es2022',

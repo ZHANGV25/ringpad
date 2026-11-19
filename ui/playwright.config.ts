@@ -6,7 +6,11 @@ const BASE_URL = `http://localhost:${PORT}`
 /** The app window opens at this size (app/tauri.conf.json). */
 const WINDOW = { width: 380, height: 680 }
 const inCi = Boolean(process.env.CI)
-/** Each test loads the unbundled dev build. At 12 workers one local run in eight lost its connection to Vite. */
+/**
+ * Each test loads the unbundled dev build. At 12 workers one local run in eight lost its connection
+ * to Vite. On a busy PC Vite still refuses one now and then at 4 to 6 workers; openApp (e2e/app.ts)
+ * loads the app again when it does.
+ */
 const LOCAL_WORKERS = 6
 
 export default defineConfig({

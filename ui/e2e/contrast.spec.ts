@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from './fixtures'
 import { settleFades } from './app'
 import { measureContrast } from './contrast'
-import { SCREENS } from './screens'
+import { MORE_SCREENS, SCREENS } from './screens'
 
 type AxeResults = Awaited<ReturnType<AxeBuilder['analyze']>>
 type AxeNode = AxeResults['violations'][number]['nodes'][number]
@@ -21,7 +21,7 @@ function selectorOf(node: AxeNode): string | null {
 }
 
 test.describe('text contrast is WCAG AA', () => {
-  for (const screen of SCREENS) {
+  for (const screen of [...SCREENS, ...MORE_SCREENS]) {
     test(screen.name, async ({ page }) => {
       await screen.open(page)
       await settleFades(page)
