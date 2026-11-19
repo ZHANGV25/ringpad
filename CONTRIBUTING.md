@@ -27,11 +27,14 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 npm run typecheck --workspace ui
 npm run coverage --workspace ui
+npm run e2e --workspace ui
 ```
 
 New code comes with tests. The engine in `crates/core` has no OS code, so most audio behaviour can
 be tested there with plain sample buffers. The interface tests run against the fake engine in
-`ui/src/engine/fakeApi.ts`.
+`ui/src/engine/fakeApi.ts`. `npm run e2e --workspace ui` runs the Playwright suite in `ui/e2e`
+(setup, main window, Settings, AA text contrast and the smallest window, in light and dark) against
+the same fake engine; run `npx playwright install chromium` in `ui` once first.
 
 ## Layout
 

@@ -30,10 +30,15 @@ React + TypeScript UI. MIT licensed. Windows 10/11 only.
   cargo test --workspace
   npm run typecheck --workspace ui
   npm run coverage --workspace ui
+  npm run e2e --workspace ui
   ```
+- `npm run e2e --workspace ui` runs Playwright (`ui/e2e`) against the fake engine in light and
+  dark, including an AA contrast check; it starts Vite itself. Run `npx playwright install chromium`
+  in `ui` once.
 - `npm test` runs the UI tests only. `tauri::generate_context!` needs the built UI at compile time,
   so run `npm run build --workspace ui` before clippy or cargo test on a fresh checkout.
-- `cargo run -p ringpad-windows --example probe` lists devices and apps and prints hotkey presses.
+- `cargo run -p ringpad-windows --example probe` lists devices and apps and prints hotkey presses
+  (letters, digits and space stay hidden unless `--all-keys` is passed).
 
 ## Release / deploy
 - CI (`.github/workflows/ci.yml`) runs on pushes to `main` and on pull requests.
