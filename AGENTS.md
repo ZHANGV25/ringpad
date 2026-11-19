@@ -71,7 +71,9 @@ React + TypeScript UI. MIT licensed. Windows 10/11 only.
 - Settings use `serde(default)`: give new fields defaults so old settings files still load.
 - Playwright under CDP emulates focus and visibility, so "calm mode" (pauses animation after the
   window loses focus) cannot be checked that way; count rAF frames instead.
-- To drive the real app: set `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222`,
-  run `cargo run -p ringpad`, then connect Playwright with `connectOverCDP`. The debug build loads
-  the Vite server on :1420.
+- To drive the real app: set `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=<port>`
+  (any free port; 9222 is often taken), run `cargo run -p ringpad`, then connect Playwright with
+  `connectOverCDP`. The debug build loads the Vite server on :1420.
+- Injected key presses (SendInput) reach no app while the screen is locked or the screen saver is on,
+  so hotkey and talk-key checks need someone at the PC.
 - Audio and hotkey code is hard to unit test: verify on a real Windows machine when touching `crates/windows`.
