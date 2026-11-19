@@ -29,6 +29,8 @@
   min-height: 0;
   padding: 16px var(--pad) 20px;
   overflow-y: auto;
+  /* Tabbing to a control at the edge scrolls its focus ring into view too, not just the control. */
+  scroll-padding-block: 8px;
 }
 
 .group {

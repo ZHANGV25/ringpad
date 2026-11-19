@@ -381,7 +381,8 @@ input[type='range']::-moz-range-thumb {
 
 .slider-row {
   display: grid;
-  grid-template-columns: minmax(84px, auto) 1fr 40px;
+  /* The value column grows for a long value ("2000 ms") instead of wrapping it. */
+  grid-template-columns: minmax(84px, auto) 1fr minmax(40px, max-content);
   align-items: center;
   gap: 10px;
   min-height: 30px;
@@ -389,6 +390,7 @@ input[type='range']::-moz-range-thumb {
 
 .slider-row .numeric {
   text-align: right;
+  white-space: nowrap;
 }
 
 /* Segmented control: one filled option among outlined ones. */

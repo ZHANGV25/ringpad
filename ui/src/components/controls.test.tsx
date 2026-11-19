@@ -17,6 +17,18 @@ describe('controls', () => {
     expect(screen.getByRole('tab', { name: 'B' }).tabIndex).toBe(-1)
   })
 
+  it('Segmented moves focus with the choice', () => {
+    const onChange = vi.fn()
+    render(<Segmented label="Pick" options={['a', 'b', 'c'] as const} value="a" labels={{ a: 'A', b: 'B', c: 'C' }} onChange={onChange} />)
+    const first = screen.getByRole('tab', { name: 'A' })
+    first.focus()
+    fireEvent.keyDown(first, { key: 'ArrowRight' })
+    expect(onChange).toHaveBeenCalledWith('b')
+    expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'B' }))
+    fireEvent.keyDown(first, { key: 'ArrowLeft' })
+    expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'C' }))
+  })
+
   it('Slider shows percent or a suffix', () => {
     const onChange = vi.fn()
     const { rerender } = render(<Slider label="Level" value={0.42} min={0} max={1} step={0.01} percent onChange={onChange} />)
@@ -70,6 +82,20 @@ describe('controls', () => {
     expect(onClose).toHaveBeenCalledOnce()
     unmount()
     fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('Sheet backdrop closes on click but is not a Tab stop', () => {
+    const onClose = vi.fn()
+    render(
+      <Sheet title="Options" onClose={onClose}>
+        <p>Body</p>
+      </Sheet>,
+    )
+    const backdrop = screen.getByRole('button', { name: 'Close' })
+    // It covers the whole window, so its focus ring would be drawn off screen.
+    expect(backdrop.tabIndex).toBe(-1)
+    fireEvent.click(backdrop)
     expect(onClose).toHaveBeenCalledOnce()
   })
 })

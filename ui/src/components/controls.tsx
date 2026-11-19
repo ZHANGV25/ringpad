@@ -33,7 +33,7 @@ interface SegmentedProps<T extends string> {
   variant?: 'segmented' | 'tabs'
 }
 
-/** One choice among a few; arrow keys move the choice. Renders as a pill group or as tabs. */
+/** One choice among a few; arrow keys move the choice, and focus with it. Renders as a pill group or as tabs. */
 export function Segmented<T extends string>({ label, options, value, labels, onChange, variant = 'segmented' }: SegmentedProps<T>) {
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') {
@@ -41,10 +41,11 @@ export function Segmented<T extends string>({ label, options, value, labels, onC
     }
     event.preventDefault()
     const delta = event.key === 'ArrowRight' ? 1 : -1
-    const index = options.indexOf(value)
-    const next = options[(index + delta + options.length) % options.length]
+    const at = (options.indexOf(value) + delta + options.length) % options.length
+    const next = options[at]
     if (next) {
       onChange(next)
+      event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')[at]?.focus()
     }
   }
   return (
@@ -161,7 +162,8 @@ export function Sheet({ title, onClose, children }: SheetProps) {
   }, [onClose])
   return (
     <>
-      <button type="button" className="sheet-backdrop" aria-label="Close" onClick={onClose} />
+      {/* For the mouse only: it covers the window, so its focus ring would sit off screen. Escape closes from the keyboard. */}
+      <button type="button" className="sheet-backdrop" aria-label="Close" tabIndex={-1} onClick={onClose} />
       <section className="sheet" role="dialog" aria-label={title}>
         <div className="sheet-head">
           <span className="title">{title}</span>
