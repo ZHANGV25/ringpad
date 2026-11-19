@@ -32,11 +32,14 @@ pub enum ImportError {
     /// File contained no decodable samples.
     #[error("No audio found in that file")]
     NoAudio,
+    /// The file was moved or deleted before it was read.
+    #[error("That file isn't there any more. It may have been moved or deleted")]
+    Missing,
     /// Filesystem error.
     #[error("{0}")]
     Io(#[from] std::io::Error),
-    /// Decoder/probe error.
-    #[error("{0}")]
+    /// Decoder/probe error. The detail goes to the log; the sentence goes to the user.
+    #[error("Ringpad can't read that file. It may be damaged, or not really a sound file")]
     Decode(String),
     /// Core clip-file error.
     #[error("{0}")]
@@ -79,7 +82,7 @@ pub fn decode_file(path: &Path) -> Result<Vec<f32>, ImportError> {
         return Err(ImportError::UnsupportedExtension);
     }
 
-    let file = File::open(path)?;
+    let file = File::open(path).map_err(open_error)?;
     let media = MediaSourceStream::new(Box::new(file), Default::default());
     let mut hint = Hint::new();
     hint.with_extension(&extension);
@@ -175,7 +178,16 @@ fn normalized_extension(path: &Path) -> Option<String> {
 }
 
 fn map_probe_error(error: SymphoniaError) -> ImportError {
+    log::warn!("could not read a sound file: {error}");
     ImportError::Decode(error.to_string())
+}
+
+fn open_error(error: std::io::Error) -> ImportError {
+    if error.kind() == std::io::ErrorKind::NotFound {
+        ImportError::Missing
+    } else {
+        ImportError::Io(error)
+    }
 }
 
 /// Returns the slot WAV path for a one-based slot.
@@ -271,5 +283,27 @@ mod tests {
         save_wav(&[], IMPORT_RATE, &path).expect("save empty");
         let err = decode_file(&path).expect_err("empty");
         assert_eq!(err.to_string(), "No audio found in that file");
+    }
+
+    #[test]
+    fn says_plainly_when_a_file_is_not_really_audio() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("notes.mp3");
+        std::fs::write(&path, "not audio").expect("write");
+        let err = decode_file(&path).expect_err("not audio");
+        assert_eq!(
+            err.to_string(),
+            "Ringpad can't read that file. It may be damaged, or not really a sound file"
+        );
+    }
+
+    #[test]
+    fn says_plainly_when_a_file_is_gone() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let err = decode_file(&dir.path().join("moved.wav")).expect_err("missing");
+        assert_eq!(
+            err.to_string(),
+            "That file isn't there any more. It may have been moved or deleted"
+        );
     }
 }
