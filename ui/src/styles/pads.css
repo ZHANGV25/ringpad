@@ -102,7 +102,8 @@
 }
 
 .pad-slot {
-  color: var(--text-faint);
+  /* The pad's number stands in for its key, so it is held to AA like the key chip. */
+  color: var(--text-muted);
   font-size: 11px;
   font-weight: 600;
 }

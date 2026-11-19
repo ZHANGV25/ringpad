@@ -223,7 +223,8 @@ button:disabled {
 
 .key-chip.faint {
   border-color: var(--line);
-  color: var(--text-faint);
+  /* Muted, not faint: the key still has to be readable (AA, 4.5:1). The light edge keeps it quiet. */
+  color: var(--text-muted);
 }
 
 .key-chip.capturing {

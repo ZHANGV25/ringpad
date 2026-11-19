@@ -17,6 +17,8 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    // Unit tests live next to the code; e2e/ holds the Playwright suite (playwright.config.ts).
+    include: ['src/**/*.test.{ts,tsx}'],
     setupFiles: ['src/test/setup.ts'],
     coverage: {
       include: ['src/**'],
