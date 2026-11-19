@@ -4,6 +4,9 @@ Ringpad is a soundboard for Windows with instant replay. It keeps the last 30 se
 your PC plays, so when a teammate says something worth hearing again, one key clips it and
 another plays it into your mic. It also has eight pads for your own sounds.
 
+**[Download Ringpad for Windows](https://github.com/ZHANGV25/ringpad/releases/latest)** (the `.exe` under
+Assets on that page)
+
 <p>
   <img src="docs/images/ringpad-demo.gif" width="300" alt="Ringpad's main window: a clip is taken from the last 30 seconds, sent to the team, saved to pad 1 and played">
   <img src="docs/images/main-dark.png" width="300" alt="Ringpad main window in the dark theme, showing its two keys">
