@@ -92,6 +92,8 @@ export function HotkeyRow({ label, target, value, hint, readOnly, clearable = tr
     latest.current = { settings: state.settings, pads: state.pads, target }
   })
 
+  const escapeCaptured = useEscapeEndsCapture(capturing, () => setCapturing(false))
+
   useEffect(() => {
     if (!capturing) return undefined
     let captured = false
@@ -101,7 +103,10 @@ export function HotkeyRow({ label, target, value, hint, readOnly, clearable = tr
         off()
         setCapturing(false)
         // Escape cancels capture; it is never bound.
-        if (key === 'escape') return
+        if (key === 'escape') {
+          escapeCaptured()
+          return
+        }
         const { settings, pads, target: current } = latest.current
         if (!settings) return
         const conflict = findConflict(key, current, settings, pads)
@@ -114,7 +119,7 @@ export function HotkeyRow({ label, target, value, hint, readOnly, clearable = tr
       off()
       if (!captured) void api.cancelKeyCapture()
     }
-  }, [api, capturing])
+  }, [api, capturing, escapeCaptured])
 
   if (pending && state.settings) {
     const settings = state.settings
@@ -181,6 +186,38 @@ export function HotkeyRow({ label, target, value, hint, readOnly, clearable = tr
 
 function padHint(pad: PadInfo, slot: number): string | undefined {
   return pad.name === `Pad ${slot + 1}` ? undefined : `Pad ${slot + 1}`
+}
+
+/** How long after the engine reports Escape the same key press may still reach the page. */
+const ESCAPE_ECHO_MS = 500
+
+/**
+ * Lets Escape end a key capture and nothing else. One press reaches both the page and the
+ * engine, in either order, and the pad sheet around a hotkey row closes on Escape too.
+ * Returns what to call when the engine reports Escape, so its page echo is held back as well.
+ */
+function useEscapeEndsCapture(capturing: boolean, stop: () => void): () => void {
+  const echoUntil = useRef(0)
+  const stopRef = useRef(stop)
+  useEffect(() => {
+    stopRef.current = stop
+  })
+  useEffect(() => {
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      if (!capturing && performance.now() > echoUntil.current) return
+      event.stopImmediatePropagation()
+      echoUntil.current = 0
+      stopRef.current()
+    }
+    // Capture phase on the window runs before the sheet's own Escape listener.
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [capturing])
+  const [escapeCaptured] = useState(() => () => {
+    echoUntil.current = performance.now() + ESCAPE_ECHO_MS
+  })
+  return escapeCaptured
 }
 
 function once(unsubscribe: Unsubscribe): Unsubscribe {

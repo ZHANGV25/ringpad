@@ -143,6 +143,30 @@ describe('main window', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
+  it('cancels a pad key with Escape and keeps the sheet open', async () => {
+    const api = await renderApp(await withPads(makeApi(), [0]))
+    fireEvent.click(screen.getByRole('button', { name: 'Pad 1 options' }))
+    const sheet = screen.getByRole('dialog', { name: 'Pad 1' })
+    const escapeInPage = () => fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' })
+
+    // In the real app one Escape reaches both the page and the engine's key capture, in either order.
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Change' }))
+    escapeInPage()
+    act(() => api.simulateKey('escape'))
+    expect(screen.getByRole('dialog', { name: 'Pad 1' })).toBe(sheet)
+    expect(within(sheet).getByRole('button', { name: 'Change' })).toBeTruthy()
+
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Change' }))
+    act(() => api.simulateKey('escape'))
+    escapeInPage()
+    expect(screen.getByRole('dialog', { name: 'Pad 1' })).toBe(sheet)
+    expect((await api.getSnapshot()).pads[0]?.hotkey).toBe('f1')
+
+    // With no key being set, Escape closes the sheet as before.
+    escapeInPage()
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
   it('does not rename to a blank name', async () => {
     const api = await renderApp(await withPads(makeApi(), [0]))
     const rename = vi.spyOn(api, 'renamePad')
