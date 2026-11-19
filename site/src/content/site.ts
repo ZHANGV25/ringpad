@@ -3,7 +3,7 @@
 // own version so a release can't ship a page that points at the last one.
 
 export const VERSION = '0.1.1'
-export const INSTALLER_BYTES = 3_626_703
+export const INSTALLER_BYTES = 3_623_373
 export const REPO_URL = 'https://github.com/ZHANGV25/ringpad'
 export const DOWNLOAD_URL = `${REPO_URL}/releases/download/v${VERSION}/Ringpad_${VERSION}_x64-setup.exe`
 export const RELEASES_URL = `${REPO_URL}/releases`

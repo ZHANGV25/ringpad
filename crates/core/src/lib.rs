@@ -28,8 +28,14 @@ pub fn version() -> &'static str {
 mod tests {
     use super::*;
 
+    /// The release workflow holds the tag to the app's version, so the engine must report it too.
     #[test]
-    fn version_matches_the_workspace() {
-        assert_eq!(version(), "0.1.0");
+    fn version_matches_the_app() {
+        let app_config = include_str!("../../../app/tauri.conf.json");
+        assert!(
+            app_config.contains(&format!("\"version\": \"{}\"", version())),
+            "Cargo.toml says {} but app/tauri.conf.json differs",
+            version()
+        );
     }
 }
