@@ -61,6 +61,7 @@ pub async fn install_virtual_mic(app: AppHandle) -> Result<InstallOutcome, Strin
     .map_err(string_error)?
     .map_err(string_error)?;
     let listed = devices.as_deref().is_some_and(has_vb_cable);
+    log::info!("VB-CABLE setup: {run:?}, cable listed: {listed}");
     if let Some(devices) = devices {
         let dto: Vec<_> = devices.into_iter().map(dto::DeviceInfo::from).collect();
         emit(&app, "devices", dto);

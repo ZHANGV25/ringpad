@@ -200,6 +200,9 @@ pub fn on_devices_changed(
 /// Stores and emits engine status.
 pub fn set_status(app: &AppHandle, state: &AppState, status: EngineStatus) {
     if let Ok(mut current) = state.status.lock() {
+        if *current != status {
+            log::info!("audio status: {status:?}");
+        }
         *current = status.clone();
     }
     emit(app, "status", status);

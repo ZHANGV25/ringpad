@@ -44,5 +44,13 @@ body:
     id: devices
     attributes:
       label: Device list (for audio problems)
-      description: Output of `cargo run -p ringpad-windows --example probe` if you build from source, or a screenshot of Settings > Audio.
+      description: Output of `cargo run -p ringpad-windows --example probe` if you build from source, or a screenshot of Settings > Mic.
+      render: text
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: >-
+        Paste the end of %APPDATA%\Ringpad\logs\ringpad.log (type that path into File Explorer's
+        address bar). It holds warnings and errors, no audio.
       render: text

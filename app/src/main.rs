@@ -6,6 +6,7 @@ mod commands;
 mod dto;
 mod hotkeys;
 mod import;
+mod logging;
 mod pads_store;
 mod paths;
 mod pump;
@@ -25,10 +26,12 @@ use runtime::AppState;
 use tauri::{Emitter, Manager};
 
 fn main() {
+    logging::log_panics();
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             tray::open_main_window(app);
         }))
+        .plugin(logging::plugin())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec!["--minimized"]),
@@ -83,6 +86,7 @@ fn main() {
                 if let Ok(mut talk) = state.talk.lock() {
                     talk.release_all();
                 }
+                log::info!("Ringpad quit");
             }
         }
     });
@@ -90,6 +94,7 @@ fn main() {
 
 fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let handle = app.handle().clone();
+    log::info!("Ringpad {} starting", app.package_info().version);
     let paths = paths::AppPaths::resolve(&handle)?;
     talk::release_crash_marker(&paths.data_dir);
     let settings = settings::load(&paths.settings_json)?;
@@ -109,6 +114,7 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             },
         }
     };
+    log::info!("audio status: {status:?}");
     if let Ok(mut current) = state.status.lock() {
         *current = status;
     }

@@ -70,6 +70,8 @@ do, so it adds no input lag and never blocks a key.
 - Ringpad records only audio your PC already plays, and keeps it in memory until you clip it.
 - Clips and pads stay on your PC in `%APPDATA%\Ringpad`. Clips are deleted after 7 days; change
   that in **Settings > Clips**.
+- A small log file, `%APPDATA%\Ringpad\logs\ringpad.log`, notes warnings and errors to help with
+  bug reports. It holds no audio and never leaves your PC unless you attach it to an issue.
 - No accounts, no telemetry, no network calls. The only links it opens are the ones you click.
 
 ## Use it kindly

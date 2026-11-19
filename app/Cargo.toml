@@ -23,6 +23,7 @@ log = "0.4"
 symphonia = { version = "0.5", features = ["mp3", "ogg", "vorbis", "flac", "wav", "pcm"] }
 ringpad-core.workspace = true
 ringpad-windows.workspace = true
+tauri-plugin-log = "2"
 
 [dev-dependencies]
 hound = "3.5"
