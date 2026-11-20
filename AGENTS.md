@@ -53,7 +53,8 @@ React + TypeScript UI. MIT licensed. Windows 10/11 only.
      Keep the workspace version in `Cargo.toml` and `ui/package.json` in step.
   2. Merge to `main` with CI green, tag `vX.Y.Z` on that commit and push the tag.
   3. The workflow builds the installer and creates a DRAFT GitHub release with the `.exe` and
-     `SHA256SUMS.txt`. A person reviews and publishes it.
+     `SHA256SUMS.txt`. A person reviews and publishes it. If a release for the tag already exists,
+     the workflow leaves it alone, so a failed run can be re-run safely.
 - Installers are unsigned.
 - On a new version, set `VERSION` and `INSTALLER_BYTES` in `site/src/content/site.ts` (a test holds
   the version to `app/tauri.conf.json`). The README's download link points at the latest release.

@@ -51,6 +51,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # A re-run leaves a release that already exists alone (one built and published by
+          # hand, or the draft from an earlier attempt), so it neither fails nor changes it.
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            echo "::notice::Release $GITHUB_REF_NAME already exists, so it was left as it is. The installer is in this run's artifacts."
+            exit 0
+          fi
           gh release create "$GITHUB_REF_NAME" --draft \
             --title "Ringpad ${GITHUB_REF_NAME#v}" --generate-notes \
             target/release/bundle/nsis/*.exe target/release/bundle/nsis/SHA256SUMS.txt
